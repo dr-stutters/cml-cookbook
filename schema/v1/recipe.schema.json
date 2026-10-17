@@ -1,0 +1,353 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dr-stutters/cml-cookbook/blob/main/schema/v1/recipe.schema.json",
+  "title": "CML Cookbook recipe (schema v1)",
+  "description": "A fixed CML topology with day-0 configs, optional post-boot steps and machine-readable checks. Field reference: docs/recipe-format.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "version",
+    "status",
+    "summary",
+    "maintainers",
+    "requirements",
+    "topology",
+    "checks",
+    "tested_on"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "$ref": "#/$defs/slug" },
+    "title": { "type": "string", "minLength": 3, "maxLength": 80 },
+    "version": { "$ref": "#/$defs/semver" },
+    "status": { "enum": ["draft", "stable", "deprecated"] },
+    "replaced_by": { "$ref": "#/$defs/slug" },
+    "summary": { "type": "string", "minLength": 10, "maxLength": 400 },
+    "level": { "enum": ["beginner", "intermediate", "advanced"] },
+    "tags": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/slug" },
+      "uniqueItems": true
+    },
+    "maintainers": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/github_handle" },
+      "uniqueItems": true
+    },
+    "requirements": { "$ref": "#/$defs/requirements" },
+    "inputs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/input" }
+    },
+    "addressing": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/prefix" }
+    },
+    "topology": { "$ref": "#/$defs/topology" },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/check" }
+    },
+    "tested_on": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/test_run" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "deprecated" } }, "required": ["status"] },
+      "then": { "required": ["replaced_by"] }
+    }
+  ],
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 50
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "cml_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+    },
+    "github_handle": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$"
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cml_min_version", "images"],
+      "properties": {
+        "cml_min_version": { "$ref": "#/$defs/cml_version" },
+        "ram_mb": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Measured total RAM of the running lab. Leave unset until a real run has measured it."
+        },
+        "images": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/image" }
+        },
+        "external": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/external_system" }
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_definition", "refplat"],
+      "properties": {
+        "node_definition": { "type": "string", "minLength": 1 },
+        "refplat": {
+          "type": "boolean",
+          "description": "True when the image ships on the CML reference platform ISO."
+        },
+        "source": {
+          "type": "string",
+          "description": "Where to get the image when it is not on the reference platform ISO."
+        },
+        "notes": { "type": "string" }
+      },
+      "if": { "properties": { "refplat": { "const": false } } },
+      "then": { "required": ["source"] }
+    },
+    "external_system": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description"],
+      "properties": {
+        "name": { "$ref": "#/$defs/slug" },
+        "description": { "type": "string" },
+        "min_version": { "type": "string" }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "type"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "description": { "type": "string" },
+        "type": { "enum": ["string", "integer", "ipv4", "ipv4_prefix", "ipv6", "secret"] },
+        "required": { "type": "boolean" },
+        "default": { "type": ["string", "integer"] },
+        "example": { "type": ["string", "integer"] }
+      },
+      "if": { "properties": { "type": { "const": "secret" } } },
+      "then": { "not": { "required": ["default"] } }
+    },
+    "prefix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prefix", "purpose"],
+      "properties": {
+        "prefix": { "type": "string" },
+        "purpose": { "type": "string" }
+      }
+    },
+    "topology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodes", "links"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/node" }
+        },
+        "links": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/link" }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "node_definition"],
+      "properties": {
+        "label": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,30}$" },
+        "node_definition": { "type": "string", "minLength": 1 },
+        "image_definition": { "type": "string" },
+        "role": { "type": "string" },
+        "config_file": { "type": "string" },
+        "config": { "type": "string" },
+        "ram_mb": { "type": "integer", "minimum": 1 },
+        "cpus": { "type": "integer", "minimum": 1 },
+        "x": { "type": "integer" },
+        "y": { "type": "integer" }
+      },
+      "not": { "required": ["config_file", "config"] }
+    },
+    "endpoint": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*:\\S+$",
+      "description": "node-label:interface-label, for example r1:Ethernet0/1"
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a", "b"],
+      "properties": {
+        "a": { "$ref": "#/$defs/endpoint" },
+        "b": { "$ref": "#/$defs/endpoint" },
+        "description": { "type": "string" }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "mode"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "title": { "type": "string" },
+        "mode": { "enum": ["config", "exec", "manual"] },
+        "node": { "type": "string" },
+        "commands": { "type": "string" },
+        "instructions": { "type": "string" },
+        "verify": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/slug" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "enum": ["config", "exec"] } } },
+          "then": { "required": ["node", "commands"] }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "manual" } } },
+          "then": { "required": ["instructions"] }
+        }
+      ]
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "description"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "type": { "enum": ["ping", "cli_match", "ospf_neighbors", "bgp_neighbors", "manual"] },
+        "description": { "type": "string" },
+        "node": { "type": "string" },
+        "timeout": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Seconds to keep retrying before the check fails."
+        },
+        "target": { "type": "string" },
+        "source": { "type": "string" },
+        "vrf": { "type": "string" },
+        "command": { "type": "string" },
+        "instructions": { "type": "string" },
+        "expect": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "ping" } } },
+          "then": {
+            "required": ["node", "target"],
+            "propertyNames": {
+              "enum": ["id", "type", "description", "node", "timeout", "target", "source", "vrf", "expect"]
+            },
+            "properties": { "expect": { "$ref": "#/$defs/expect_ping" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "cli_match" } } },
+          "then": {
+            "required": ["node", "command", "expect"],
+            "propertyNames": {
+              "enum": ["id", "type", "description", "node", "timeout", "command", "expect"]
+            },
+            "properties": { "expect": { "$ref": "#/$defs/expect_cli" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "enum": ["ospf_neighbors", "bgp_neighbors"] } } },
+          "then": {
+            "required": ["node", "expect"],
+            "propertyNames": {
+              "enum": ["id", "type", "description", "node", "timeout", "vrf", "expect"]
+            },
+            "properties": { "expect": { "$ref": "#/$defs/expect_neighbors" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "manual" } } },
+          "then": {
+            "required": ["instructions"],
+            "propertyNames": {
+              "enum": ["id", "type", "description", "node", "timeout", "instructions"]
+            }
+          }
+        }
+      ]
+    },
+    "expect_ping": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "success_min": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "success_max": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "expect_cli": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "pattern": { "type": "string" },
+        "not_pattern": { "type": "string" }
+      }
+    },
+    "expect_neighbors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "state": { "type": "string" },
+        "neighbors": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "test_run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recipe_version", "cml_version", "date", "result", "by"],
+      "properties": {
+        "recipe_version": { "$ref": "#/$defs/semver" },
+        "cml_version": { "$ref": "#/$defs/cml_version" },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "result": { "enum": ["pass", "fail", "partial"] },
+        "by": { "type": "string" },
+        "images": {
+          "type": "object",
+          "description": "Image definition used per node definition, for example iol-xe: iol-xe-17-15-01",
+          "additionalProperties": { "type": "string" }
+        },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

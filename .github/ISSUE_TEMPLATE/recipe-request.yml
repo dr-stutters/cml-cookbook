@@ -1,0 +1,43 @@
+name: Recipe request
+description: Suggest a topology for the cookbook
+title: "[recipe request] "
+labels: ["recipe-request"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What should the lab show?
+      description: One or two sentences, for example "eBGP to two ISPs with the edge preferring ISP A outbound".
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - routing-switching
+        - enterprise
+        - security
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: topology
+    attributes:
+      label: Rough topology
+      description: Nodes, links and protocols. A sketch or list is fine.
+  - type: input
+    id: images
+    attributes:
+      label: Images you'd expect it to use
+      placeholder: iol-xe, ioll2-xe, cat8000v, ftdv ...
+  - type: textarea
+    id: checks
+    attributes:
+      label: How would you know it works?
+      description: The show commands or pings that would prove it.
+  - type: textarea
+    id: external
+    attributes:
+      label: Anything outside CML it needs
+      description: For example ISE, Catalyst Center or a domain controller.

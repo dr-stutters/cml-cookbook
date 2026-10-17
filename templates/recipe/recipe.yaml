@@ -1,0 +1,65 @@
+schema_version: 1
+id: __RECIPE_ID__
+title: __RECIPE_TITLE_YAML__
+version: 0.1.0
+status: draft
+summary: >-
+  TODO: one or two sentences on what this lab builds and what it shows.
+level: intermediate
+tags: []
+maintainers: [__MAINTAINER__]
+
+requirements:
+  cml_min_version: "2.7"
+  # ram_mb: fill in after a real run has measured it
+  images:
+    - node_definition: iol-xe
+      refplat: true
+  # external:            # systems outside CML that the lab depends on
+  #   - name: ise
+  #     description: Cisco ISE PAN reachable from the lab's external connector
+
+# Inputs are only for systems outside the lab. See docs/recipe-format.md#inputs.
+# inputs:
+#   - name: ise_ip
+#     description: IP address of the ISE PAN
+#     type: ipv4
+#     example: 192.0.2.10
+
+addressing:
+  - prefix: 10.255.0.0/24
+    purpose: Loopback0 and router ID, 10.255.0.N/32 on rN
+
+topology:
+  nodes:
+    - label: r1
+      node_definition: iol-xe
+      role: TODO
+      config_file: configs/r1.cfg
+      x: 0
+      y: 0
+  links: []
+  # links:
+  #   - a: r1:Ethernet0/1
+  #     b: r2:Ethernet0/1
+
+# Steps are only for what day-0 config can't do. See docs/recipe-format.md#steps.
+# steps:
+#   - id: example-step
+#     title: Describe the step
+#     mode: config
+#     node: r1
+#     commands: |
+#       ...
+#     verify: [r1-loopback]
+
+checks:
+  - id: r1-loopback
+    type: cli_match
+    description: r1 has its Loopback0 address
+    node: r1
+    command: show ip interface brief
+    expect:
+      pattern: 'Loopback0\s+10\.255\.0\.1\s'
+
+tested_on: []

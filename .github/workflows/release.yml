@@ -1,0 +1,63 @@
+name: release
+
+# Tags and releases every recipe whose current version has no tag yet.
+on:
+  push:
+    branches: [main]
+    paths: ["recipes/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the cookbook CLI
+        run: pip install -e .
+
+      - name: Validate before releasing
+        run: cookbook validate
+
+      - name: Tag and release new recipe versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cookbook release-plan --json > "$RUNNER_TEMP/plan.json"
+          if [ "$(jq length "$RUNNER_TEMP/plan.json")" -eq 0 ]; then
+            echo "Every recipe version is already tagged."
+            exit 0
+          fi
+          jq -c '.[]' "$RUNNER_TEMP/plan.json" | while read -r entry; do
+            id=$(jq -r .id <<<"$entry")
+            version=$(jq -r .version <<<"$entry")
+            tag=$(jq -r .tag <<<"$entry")
+            path=$(jq -r .path <<<"$entry")
+            jq -r .notes <<<"$entry" > "$RUNNER_TEMP/notes.md"
+            asset="$RUNNER_TEMP/${id}-v${version}.zip"
+            (cd "$(dirname "$path")" && python -m zipfile -c "$asset" "$(basename "$path")")
+            flags=(--latest=false)
+            if [ "$(jq -r .prerelease <<<"$entry")" = "true" ]; then
+              flags+=(--prerelease)
+            fi
+            gh release create "$tag" "$asset" \
+              --target "$GITHUB_SHA" \
+              --title "$id v$version" \
+              --notes-file "$RUNNER_TEMP/notes.md" \
+              "${flags[@]}"
+            echo "Released $tag"
+          done

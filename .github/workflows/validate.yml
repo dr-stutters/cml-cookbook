@@ -1,0 +1,39 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the cookbook CLI
+        run: pip install -e ".[dev]"
+
+      - name: Validate recipes
+        run: cookbook validate
+
+      - name: Catalog is up to date
+        run: cookbook index --check
+
+      - name: Changed recipes have a version bump
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: cookbook version-check --base "origin/$BASE_REF"
+
+      - name: Tests
+        run: pytest

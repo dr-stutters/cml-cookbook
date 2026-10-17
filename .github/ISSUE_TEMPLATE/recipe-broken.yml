@@ -1,0 +1,48 @@
+name: Recipe doesn't work
+description: A recipe failed to build, or some of its checks failed
+title: "[recipe bug] "
+labels: ["recipe-bug"]
+body:
+  - type: input
+    id: recipe
+    attributes:
+      label: Recipe and version
+      placeholder: ospf-multi-area 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: cml
+    attributes:
+      label: CML version
+      placeholder: "2.9.0"
+    validations:
+      required: true
+  - type: textarea
+    id: images
+    attributes:
+      label: Image versions
+      description: The image definition used for each node definition in the recipe.
+      placeholder: "iol-xe: iol-xe-17-15-01"
+  - type: dropdown
+    id: how
+    attributes:
+      label: How was it built?
+      options:
+        - AI agent following AGENTS.md
+        - By hand in the CML UI
+        - Script or other tool
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Which agent or tool?
+      placeholder: Claude Code with a CML MCP server, a virl2_client script, ...
+  - type: textarea
+    id: failure
+    attributes:
+      label: What failed?
+      description: Check IDs that failed and the output, or the error during the build. Remove any real addresses or secrets.
+      render: text
+    validations:
+      required: true

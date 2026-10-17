@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cml-cookbook"
+version = "0.1.0"
+description = "Validate, catalog and scaffold CML Cookbook topology recipes"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+    "jsonschema>=4.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+cookbook = "cml_cookbook.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/dr-stutters/cml-cookbook"
+Issues = "https://github.com/dr-stutters/cml-cookbook/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
