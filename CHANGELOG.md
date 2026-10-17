@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- `cookbook render <id> [--input name=value] [-o FILE]` writes a recipe as a CML topology file to import and start. It uses lab schema 0.2.2 and knows the interface layout of `iol-xe` and `ioll2-xe`. Tested by importing all four stable recipes into CML 2.10.0, where every check passed.
+- The release workflow attaches `<id>-v<version>.yaml` to every recipe release that needs no inputs, and `cookbook release-plan --json` reports which ones are `renderable`.
+
+### Changed
+
+- AGENTS.md: agents whose tools can import CML topology YAML import the rendered lab file instead of building node by node.
+
 ## [0.1.0] - 2026-10-17
 
 ### Added

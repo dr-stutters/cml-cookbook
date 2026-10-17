@@ -61,6 +61,7 @@ The "public" prefixes come from the RFC 5737 documentation ranges and the ISP AS
 Every node boots fully configured, so there are no post-boot steps.
 
 - **With an AI agent:** ask it to build `bgp-dual-isp-edge` from this repo and run its checks. [AGENTS.md](../../../AGENTS.md) tells it how.
+- **Import the lab file:** download `bgp-dual-isp-edge-v<version>.yaml` from the recipe's [latest release](https://github.com/dr-stutters/cml-cookbook/releases?q=bgp-dual-isp-edge), import it in CML (Dashboard → Import) and start it. Or make it yourself with `cookbook render bgp-dual-isp-edge -o lab.yaml`.
 - **By hand:** create the four nodes and four links in the tables above in the CML UI, paste each file from [`configs/`](configs/) into the node's config before starting it, then start the lab.
 
 ## Checks

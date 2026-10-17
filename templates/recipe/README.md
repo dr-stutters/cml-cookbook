@@ -27,6 +27,7 @@ TODO: licensed node count and whether every image is on the reference platform I
 TODO: say whether every node boots fully configured. If there are `steps` in `recipe.yaml`, explain here why each one can't be day-0 config.
 
 - **With an AI agent:** ask it to build `__RECIPE_ID__` from this repo and run its checks. [AGENTS.md](../../../AGENTS.md) tells it how.
+- **Import the lab file:** download `__RECIPE_ID__-v<version>.yaml` from the recipe's [latest release](https://github.com/dr-stutters/cml-cookbook/releases?q=__RECIPE_ID__), import it in CML (Dashboard → Import) and start it. Or make it yourself with `cookbook render __RECIPE_ID__ -o lab.yaml`.
 - **By hand:** create the nodes and links in the table above in the CML UI, paste each file from [`configs/`](configs/) into the node's config before starting it, then start the lab.
 
 ## Checks

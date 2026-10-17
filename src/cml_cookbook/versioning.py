@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from cml_cookbook.recipes import Issue, load_all, load_yaml
+from cml_cookbook.render import needs_inputs, unsupported_node_definitions
 
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 CHANGELOG_HEADING = re.compile(r"^## \[?(\d+\.\d+\.\d+)\]?", re.MULTILINE)
@@ -140,6 +141,7 @@ def release_plan(root: Path) -> list[dict[str, Any]]:
                 "tag": tag,
                 "path": recipe.path.relative_to(root).as_posix(),
                 "prerelease": recipe.data.get("status") == "draft",
+                "renderable": not needs_inputs(recipe) and not unsupported_node_definitions(recipe),
                 "notes": notes or f"{recipe.id} {recipe.version}",
             }
         )

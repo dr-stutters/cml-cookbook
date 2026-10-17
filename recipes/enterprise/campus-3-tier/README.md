@@ -65,6 +65,7 @@ The secondary has STP priority 28672 and the default HSRP priority of 100, and b
 Every node boots fully configured, so there are no post-boot steps.
 
 - **With an AI agent:** ask it to build `campus-3-tier` from this repo and run its checks. [AGENTS.md](../../../AGENTS.md) tells it how.
+- **Import the lab file:** download `campus-3-tier-v<version>.yaml` from the recipe's [latest release](https://github.com/dr-stutters/cml-cookbook/releases?q=campus-3-tier), import it in CML (Dashboard → Import) and start it. Or make it yourself with `cookbook render campus-3-tier -o lab.yaml`.
 - **By hand:** create the five nodes and seven links in the tables above in the CML UI (add a fifth interface to dist2 and dist3 if CML doesn't create one), paste each file from [`configs/`](configs/) into the node's config before starting it, then start the lab.
 
 ## Checks

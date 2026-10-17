@@ -10,15 +10,13 @@ from pathlib import Path
 
 from cml_cookbook import __version__
 from cml_cookbook.catalog import CatalogError, write_catalog
-from cml_cookbook.recipes import CATEGORIES, Issue, RecipeError, find_root
+from cml_cookbook.recipes import CATEGORIES, Issue, RecipeError, find_recipe, find_root
+from cml_cookbook.render import REPO_URL, RenderError, parse_input_args, render
 from cml_cookbook.scaffold import new_recipe
 from cml_cookbook.validate import validate_repo
 from cml_cookbook.versioning import GitError, release_plan, version_check
 
-NOT_YET = (
-    "cookbook {command} isn't implemented yet: it needs a real CML server to be built and "
-    "tested against. See the roadmap in docs/design.md."
-)
+NOT_YET = "cookbook {command} isn't implemented yet. It's on the roadmap: " + REPO_URL + "/milestones"
 
 
 def _report(issues: list[Issue], checked: str, strict: bool = False) -> int:
@@ -76,6 +74,31 @@ def cmd_release_plan(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_render(root: Path, args: argparse.Namespace) -> int:
+    _, issues = validate_repo(root, [args.id])
+    if any(issue.level == "error" for issue in issues):
+        _report(issues, f"{args.id} not rendered")
+        return 1
+    recipe = find_recipe(root, args.id)
+    given = parse_input_args(args.input)
+    secrets = {item["name"] for item in recipe.data.get("inputs", []) if item["type"] == "secret"}
+    has_secret = bool(secrets & set(given))
+    if has_secret and args.output is None:
+        raise RenderError("a secret input was given, so the lab file isn't printed; write it to a file with -o")
+    text = render(recipe, given)
+    if args.output is None:
+        sys.stdout.write(text)
+    else:
+        args.output.write_text(text, encoding="utf-8")
+        if has_secret:
+            args.output.chmod(0o600)
+        print(f"Wrote {args.output}. Import it in CML (Dashboard > Import), then start the lab.", file=sys.stderr)
+    steps = recipe.data.get("steps", [])
+    if steps:
+        print(f"After the lab boots, run its {len(steps)} build step(s): see the recipe's README.", file=sys.stderr)
+    return 0
+
+
 def cmd_not_yet(root: Path, args: argparse.Namespace) -> int:
     print(NOT_YET.format(command=args.command), file=sys.stderr)
     return 2
@@ -87,7 +110,7 @@ COMMANDS: dict[str, Callable[[Path, argparse.Namespace], int]] = {
     "new": cmd_new,
     "version-check": cmd_version_check,
     "release-plan": cmd_release_plan,
-    "render": cmd_not_yet,
+    "render": cmd_render,
     "check": cmd_not_yet,
 }
 
@@ -117,9 +140,15 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("release-plan", help="list recipe versions that don't have a git tag yet")
     p.add_argument("--json", action="store_true")
 
-    for name in ("render", "check"):
-        p = sub.add_parser(name, help="not implemented yet (needs a CML server)")
-        p.add_argument("id")
+    p = sub.add_parser("render", help="write a recipe as a CML lab file you can import and start")
+    p.add_argument("id")
+    p.add_argument(
+        "--input", action="append", default=[], metavar="NAME=VALUE", help="value for one of the recipe's inputs"
+    )
+    p.add_argument("-o", "--output", type=Path, help="file to write (default: print it)")
+
+    p = sub.add_parser("check", help="not implemented yet (on the roadmap)")
+    p.add_argument("id")
 
     return parser
 
@@ -129,6 +158,6 @@ def main(argv: list[str] | None = None) -> int:
     try:
         root = args.root.resolve() if args.root else find_root()
         return COMMANDS[args.command](root, args)
-    except (RecipeError, CatalogError, GitError) as exc:
+    except (RecipeError, CatalogError, GitError, RenderError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

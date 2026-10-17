@@ -32,6 +32,8 @@ In `recipe.yaml`:
 
 Run `cookbook validate bgp-dual-isp-edge` often. It catches broken references early.
 
+Check that `cookbook render bgp-dual-isp-edge` works too: the release attaches its output as the importable lab file. It knows how CML numbers interfaces on `iol-xe` and `ioll2-xe`. For any other node definition, export a lab that uses it from CML and add it to `NODE_DEFINITIONS` in [`src/cml_cookbook/render.py`](../src/cml_cookbook/render.py), with a test.
+
 ## 4. Write the day-0 configs
 
 One file per node in `configs/`, named `<label>.cfg`, starting and ending with the [standard lines](conventions.md#day-0-configs). Aim for every node to boot fully configured.

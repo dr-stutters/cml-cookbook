@@ -1,7 +1,7 @@
 schema_version: 1
 id: bgp-dual-isp-edge
 title: BGP dual-ISP edge
-version: 1.0.0
+version: 1.0.1
 status: stable
 summary: >-
   Two edge routers in AS 65001, each with eBGP to its own simulated ISP and iBGP

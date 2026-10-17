@@ -74,10 +74,10 @@ The roadmap lives on GitHub: each phase is a [milestone](https://github.com/dr-s
 
 - Recipe format, schema v1, conventions and versioning rules
 - `cookbook validate`, `index`, `new`, `version-check` and `release-plan`, plus CI and the release workflow
+- `cookbook render`, and an importable lab file on every recipe release ([#3](https://github.com/dr-stutters/cml-cookbook/issues/3), [#4](https://github.com/dr-stutters/cml-cookbook/issues/4))
 - Four stable recipes, each tested twice on CML 2.10.0 (2026-10-17): `ospf-multi-area`, `bgp-dual-isp-edge` (after a config-ordering fix), `campus-3-tier` (after a config-ordering fix and replacing HSRP tracking, which IOL L2 lacks) and `dmvpn-branch-wan`
 
 ## Open questions
 
 - Which CML switch image supports 802.1X and MAB well enough for `dot1x-access-ise`. Tracked in [#6](https://github.com/dr-stutters/cml-cookbook/issues/6).
-- How `cookbook render` should map interface labels to slots for each node definition. Tracked in [#3](https://github.com/dr-stutters/cml-cookbook/issues/3).
 - Whether the minimum CML version for IOL recipes should be 2.7. That depends on when the `iol-xe` node definitions first shipped, which needs checking.

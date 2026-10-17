@@ -1,7 +1,7 @@
 schema_version: 1
 id: ospf-multi-area
 title: OSPF multi-area
-version: 1.0.0
+version: 1.0.1
 status: stable
 summary: >-
   Five IOL routers in three OSPF areas: a backbone triangle, a normal area with
