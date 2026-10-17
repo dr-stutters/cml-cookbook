@@ -1,0 +1,151 @@
+schema_version: 1
+id: dmvpn-branch-wan
+title: DMVPN branch WAN
+version: 0.1.0
+status: draft
+summary: >-
+  A head-office hub and two branch spokes joined by DMVPN Phase 3 over a simulated
+  internet. OSPF runs over the mGRE tunnel and sends branch-to-branch routes through
+  the hub, then NHRP redirects build direct spoke-to-spoke tunnels on demand.
+level: intermediate
+tags: [dmvpn, nhrp, mgre, ospf, wan, hub-and-spoke, ipv4]
+maintainers: [dr-stutters]
+
+requirements:
+  cml_min_version: "2.7"
+  images:
+    - node_definition: iol-xe
+      refplat: true
+
+addressing:
+  - prefix: 10.255.0.0/24
+    purpose: Loopback0 and router ID, 10.255.0.N/32 on node N
+  - prefix: 10.0.0.0/8
+    purpose: >-
+      Underlay links to the simulated internet, 10.X.Y.0/24 between nodes X and Y.
+      Each site's address on its link is its NBMA address.
+  - prefix: 172.16.0.0/24
+    purpose: DMVPN overlay (Tunnel0), 172.16.0.N on node N; hub1 is the NHRP server at 172.16.0.1
+  - prefix: 172.16.1.0/24
+    purpose: hub1 Loopback1, stand-in for the head-office LAN
+  - prefix: 172.16.2.0/24
+    purpose: spoke2 Loopback1, stand-in for a branch LAN
+  - prefix: 172.16.3.0/24
+    purpose: spoke3 Loopback1, stand-in for a branch LAN
+
+topology:
+  nodes:
+    - label: hub1
+      node_definition: iol-xe
+      role: DMVPN hub and NHRP server at the head office
+      config_file: configs/hub1.cfg
+      x: 0
+      y: 0
+    - label: isp4
+      node_definition: iol-xe
+      role: Simulated internet, routes only between its connected links
+      config_file: configs/isp4.cfg
+      x: 0
+      y: 200
+    - label: spoke2
+      node_definition: iol-xe
+      role: DMVPN spoke at a branch
+      config_file: configs/spoke2.cfg
+      x: -200
+      y: 400
+    - label: spoke3
+      node_definition: iol-xe
+      role: DMVPN spoke at a branch
+      config_file: configs/spoke3.cfg
+      x: 200
+      y: 400
+  links:
+    - a: hub1:Ethernet0/1
+      b: isp4:Ethernet0/1
+      description: Head-office internet link, 10.1.4.0/24
+    - a: spoke2:Ethernet0/1
+      b: isp4:Ethernet0/2
+      description: Branch internet link, 10.2.4.0/24
+    - a: spoke3:Ethernet0/1
+      b: isp4:Ethernet0/3
+      description: Branch internet link, 10.3.4.0/24
+
+checks:
+  - id: hub1-ospf-neighbors
+    type: ospf_neighbors
+    description: hub1 is FULL with both spokes over the DMVPN tunnel
+    node: hub1
+    expect:
+      count: 2
+      neighbors: [10.255.0.2, 10.255.0.3]
+  - id: spoke2-ospf-neighbors
+    type: ospf_neighbors
+    description: spoke2 is FULL with hub1 only; spokes never form adjacencies with each other
+    node: spoke2
+    expect:
+      count: 1
+      neighbors: [10.255.0.1]
+  - id: spoke3-ospf-neighbors
+    type: ospf_neighbors
+    description: spoke3 is FULL with hub1 only
+    node: spoke3
+    expect:
+      count: 1
+      neighbors: [10.255.0.1]
+  - id: hub1-nhrp-registrations
+    type: cli_match
+    description: Both spokes have registered their NBMA addresses with hub1
+    node: hub1
+    command: show dmvpn
+    expect:
+      pattern: '(?=[\s\S]*10\.2\.4\.2\s+172\.16\.0\.2\s+UP)[\s\S]*10\.3\.4\.3\s+172\.16\.0\.3\s+UP'
+  - id: spoke2-route-via-hub
+    type: cli_match
+    description: >-
+      spoke2 learns spoke3's LAN through OSPF with hub1 as the next hop. In Phase 3
+      the routing table always points at the hub, and NHRP overrides it per flow.
+    node: spoke2
+    command: show ip route 172.16.3.0
+    expect:
+      pattern: '172\.16\.0\.1, from 10\.255\.0\.3'
+  - id: ping-spoke2-hub-lan
+    type: ping
+    description: spoke2's LAN reaches the head-office LAN over the tunnel
+    node: spoke2
+    target: 172.16.1.1
+    source: Loopback1
+  - id: ping-spoke3-hub-lan
+    type: ping
+    description: spoke3's LAN reaches the head-office LAN over the tunnel
+    node: spoke3
+    target: 172.16.1.1
+    source: Loopback1
+  - id: ping-spoke2-spoke3-lan
+    type: ping
+    description: >-
+      spoke2's LAN reaches spoke3's LAN. The first packets go through hub1, which
+      redirects spoke2 to build a direct tunnel to spoke3.
+    node: spoke2
+    target: 172.16.3.1
+    source: Loopback1
+  - id: spoke2-shortcut
+    type: cli_match
+    description: >-
+      Branch-to-branch traffic takes the direct spoke-to-spoke tunnel: the first hop
+      is spoke3, not hub1. If no traffic has built the shortcut yet, the first
+      traceroute goes through hub1 and triggers it, so a retry passes.
+    node: spoke2
+    command: traceroute 172.16.3.1 source Loopback1
+    expect:
+      pattern: '^\s*1 172\.16\.(0\.3|3\.1)\s'
+  - id: spoke2-dynamic-tunnel
+    type: cli_match
+    description: >-
+      spoke2 has a dynamic NHRP entry for spoke3's NBMA address. It exists only after
+      branch-to-branch traffic, so run it after spoke2-shortcut.
+    node: spoke2
+    command: show dmvpn
+    expect:
+      pattern: '10\.3\.4\.3\s+172\.16\.0\.3\s+UP\s+\S+\s+D'
+
+tested_on: []

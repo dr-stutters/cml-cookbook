@@ -1,0 +1,207 @@
+schema_version: 1
+id: campus-3-tier
+title: Three-tier campus
+version: 0.1.0
+status: draft
+summary: >-
+  A three-tier campus in five nodes: a routed core, a distribution pair that runs
+  OSPF to the core and HSRP gateways for three VLANs, and two dual-homed access
+  switches on Rapid PVST+. Each VLAN's spanning-tree root is also its HSRP active
+  router, so the load splits across both distribution switches.
+level: intermediate
+tags: [campus, vlan, trunking, stp, rapid-pvst, hsrp, ospf, ipv4]
+maintainers: [dr-stutters]
+
+requirements:
+  cml_min_version: "2.7"
+  images:
+    - node_definition: iol-xe
+      refplat: true
+    - node_definition: ioll2-xe
+      refplat: true
+
+addressing:
+  - prefix: 10.255.0.0/24
+    purpose: Loopback0 and router ID on the routed nodes, 10.255.0.N/32 on node N
+  - prefix: 10.0.0.0/8
+    purpose: Routed core links, 10.X.Y.0/24 between nodes X and Y
+  - prefix: 172.16.1.0/24
+    purpose: core1 Loopback1, stand-in for the data center and shared services
+  - prefix: 172.16.10.0/24
+    purpose: VLAN 10 (DATA). HSRP virtual gateway .1, dist2 .2, dist3 .3
+  - prefix: 172.16.20.0/24
+    purpose: VLAN 20 (VOICE). HSRP virtual gateway .1, dist2 .2, dist3 .3
+  - prefix: 172.16.99.0/24
+    purpose: VLAN 99 (MGMT). HSRP virtual gateway .1, dist2 .2, dist3 .3, accN .N
+
+topology:
+  nodes:
+    - label: core1
+      node_definition: iol-xe
+      role: Routed core, OSPF to both distribution switches
+      config_file: configs/core1.cfg
+      x: 0
+      y: 0
+    - label: dist2
+      node_definition: ioll2-xe
+      role: Distribution, STP root and HSRP active for VLANs 10 and 99
+      config_file: configs/dist2.cfg
+      x: -200
+      y: 200
+    - label: dist3
+      node_definition: ioll2-xe
+      role: Distribution, STP root and HSRP active for VLAN 20
+      config_file: configs/dist3.cfg
+      x: 200
+      y: 200
+    - label: acc4
+      node_definition: ioll2-xe
+      role: Layer 2 access switch, trunks to both distribution switches
+      config_file: configs/acc4.cfg
+      x: -200
+      y: 400
+    - label: acc5
+      node_definition: ioll2-xe
+      role: Layer 2 access switch, trunks to both distribution switches
+      config_file: configs/acc5.cfg
+      x: 200
+      y: 400
+  links:
+    - a: core1:Ethernet0/1
+      b: dist2:Ethernet0/1
+      description: Routed, OSPF area 0, 10.1.2.0/24
+    - a: core1:Ethernet0/2
+      b: dist3:Ethernet0/1
+      description: Routed, OSPF area 0, 10.1.3.0/24
+    - a: dist2:Ethernet0/2
+      b: dist3:Ethernet0/2
+      description: Trunk between the distribution pair, VLANs 10, 20 and 99
+    - a: dist2:Ethernet0/3
+      b: acc4:Ethernet0/1
+      description: Trunk, VLANs 10, 20 and 99
+    - a: dist3:Ethernet0/3
+      b: acc4:Ethernet0/2
+      description: Trunk, VLANs 10, 20 and 99
+    - a: dist2:Ethernet1/0
+      b: acc5:Ethernet0/1
+      description: Trunk, VLANs 10, 20 and 99
+    - a: dist3:Ethernet1/0
+      b: acc5:Ethernet0/2
+      description: Trunk, VLANs 10, 20 and 99
+
+checks:
+  - id: core1-ospf-neighbors
+    type: ospf_neighbors
+    description: core1 is FULL with both distribution switches
+    node: core1
+    expect:
+      count: 2
+      neighbors: [10.255.0.2, 10.255.0.3]
+  - id: dist2-ospf-neighbors
+    type: ospf_neighbors
+    description: dist2 is FULL with core1 only (its VLAN interfaces are passive)
+    node: dist2
+    expect:
+      count: 1
+      neighbors: [10.255.0.1]
+  - id: dist3-ospf-neighbors
+    type: ospf_neighbors
+    description: dist3 is FULL with core1 only (its VLAN interfaces are passive)
+    node: dist3
+    expect:
+      count: 1
+      neighbors: [10.255.0.1]
+  - id: core1-ecmp-to-data
+    type: cli_match
+    description: core1 learns the VLAN 10 subnet from both distribution switches and load-shares across them
+    node: core1
+    command: show ip route 172.16.10.0
+    expect:
+      pattern: '(?=[\s\S]*10\.1\.2\.2, from 10\.255\.0\.2)[\s\S]*10\.1\.3\.3, from 10\.255\.0\.3'
+  - id: dist2-stp-root-vlan10
+    type: cli_match
+    description: dist2 is the spanning-tree root for VLAN 10
+    node: dist2
+    command: show spanning-tree vlan 10
+    expect:
+      pattern: 'This bridge is the root'
+  - id: dist3-stp-root-vlan20
+    type: cli_match
+    description: dist3 is the spanning-tree root for VLAN 20
+    node: dist3
+    command: show spanning-tree vlan 20
+    expect:
+      pattern: 'This bridge is the root'
+  - id: acc4-stp-vlan10
+    type: cli_match
+    description: In VLAN 10, acc4 forwards on its uplink to dist2 and blocks its uplink to dist3
+    node: acc4
+    command: show spanning-tree vlan 10
+    expect:
+      pattern: 'Et0/1\s+Root\s+FWD[\s\S]*Et0/2\s+Altn\s+BLK'
+  - id: acc4-stp-vlan20
+    type: cli_match
+    description: In VLAN 20, acc4 forwards on its uplink to dist3 and blocks its uplink to dist2
+    node: acc4
+    command: show spanning-tree vlan 20
+    expect:
+      pattern: 'Et0/1\s+Altn\s+BLK[\s\S]*Et0/2\s+Root\s+FWD'
+  - id: acc5-stp-vlan10
+    type: cli_match
+    description: In VLAN 10, acc5 forwards on its uplink to dist2 and blocks its uplink to dist3
+    node: acc5
+    command: show spanning-tree vlan 10
+    expect:
+      pattern: 'Et0/1\s+Root\s+FWD[\s\S]*Et0/2\s+Altn\s+BLK'
+  - id: acc5-stp-vlan20
+    type: cli_match
+    description: In VLAN 20, acc5 forwards on its uplink to dist3 and blocks its uplink to dist2
+    node: acc5
+    command: show spanning-tree vlan 20
+    expect:
+      pattern: 'Et0/1\s+Altn\s+BLK[\s\S]*Et0/2\s+Root\s+FWD'
+  - id: dist2-hsrp
+    type: cli_match
+    description: dist2 is HSRP active for VLANs 10 and 99 and standby for VLAN 20
+    node: dist2
+    command: show standby brief
+    expect:
+      pattern: 'Vl10\s+10\s+\d+\s+P?\s*Active[\s\S]*Vl20\s+20\s+\d+\s+P?\s*Standby[\s\S]*Vl99\s+99\s+\d+\s+P?\s*Active'
+  - id: dist3-hsrp
+    type: cli_match
+    description: dist3 is HSRP standby for VLANs 10 and 99 and active for VLAN 20
+    node: dist3
+    command: show standby brief
+    expect:
+      pattern: 'Vl10\s+10\s+\d+\s+P?\s*Standby[\s\S]*Vl20\s+20\s+\d+\s+P?\s*Active[\s\S]*Vl99\s+99\s+\d+\s+P?\s*Standby'
+  - id: ping-core1-data-gateway
+    type: ping
+    description: core1's loopback reaches the VLAN 10 virtual gateway, owned by dist2
+    node: core1
+    target: 172.16.10.1
+    source: Loopback0
+  - id: ping-core1-voice-gateway
+    type: ping
+    description: core1's loopback reaches the VLAN 20 virtual gateway, owned by dist3
+    node: core1
+    target: 172.16.20.1
+    source: Loopback0
+  - id: ping-core1-acc4
+    type: ping
+    description: core1's loopback reaches acc4's management address across the distribution layer and VLAN 99
+    node: core1
+    target: 172.16.99.4
+    source: Loopback0
+  - id: ping-core1-acc5
+    type: ping
+    description: core1's loopback reaches acc5's management address across the distribution layer and VLAN 99
+    node: core1
+    target: 172.16.99.5
+    source: Loopback0
+  - id: ping-acc5-services
+    type: ping
+    description: acc5 reaches core1's services network through its HSRP default gateway
+    node: acc5
+    target: 172.16.1.1
+
+tested_on: []

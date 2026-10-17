@@ -13,11 +13,19 @@ REPO = Path(__file__).resolve().parents[1]
 OSPF = Path("recipes/routing-switching/ospf-multi-area")
 
 
+def _only_ospf(directory: str, names: list[str]) -> list[str]:
+    """copytree filter: keep the category READMEs and ospf-multi-area, so tests don't change as recipes are added."""
+    if Path(directory).parent == REPO / "recipes":
+        return [name for name in names if (Path(directory) / name).is_dir() and name != OSPF.name]
+    return []
+
+
 @pytest.fixture
 def cookbook(tmp_path: Path) -> Path:
-    """A copy of this repo's schema, templates and recipes, with a minimal README."""
-    for name in ("schema", "templates", "recipes"):
+    """A copy of this repo's schema, templates and the ospf-multi-area recipe, with a minimal README."""
+    for name in ("schema", "templates"):
         shutil.copytree(REPO / name, tmp_path / name)
+    shutil.copytree(REPO / "recipes", tmp_path / "recipes", ignore=_only_ospf)
     (tmp_path / "README.md").write_text("# Test\n\n<!-- catalog:start -->\n<!-- catalog:end -->\n")
     return tmp_path
 

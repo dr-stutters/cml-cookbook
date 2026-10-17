@@ -1,0 +1,180 @@
+schema_version: 1
+id: bgp-dual-isp-edge
+title: BGP dual-ISP edge
+version: 0.1.0
+status: draft
+summary: >-
+  Two edge routers in AS 65001, each with eBGP to its own simulated ISP and iBGP
+  between them. ISP A is primary both ways: local preference pulls outbound traffic
+  to it, AS-path prepending toward ISP B pushes inbound traffic to it, and a prefix
+  list stops the enterprise becoming a transit AS.
+level: intermediate
+tags: [bgp, ebgp, ibgp, multihoming, local-preference, as-path-prepend, ospf, ipv4]
+maintainers: [dr-stutters]
+
+requirements:
+  cml_min_version: "2.7"
+  images:
+    - node_definition: iol-xe
+      refplat: true
+
+addressing:
+  - prefix: 10.255.0.0/24
+    purpose: Loopback0 and router ID, 10.255.0.N/32 on node N
+  - prefix: 10.0.0.0/8
+    purpose: Point-to-point links, 10.X.Y.0/24 between nodes X and Y
+  - prefix: 203.0.113.0/24
+    purpose: >-
+      The enterprise's public block (AS 65001), advertised by both edges.
+      Loopback1 is 203.0.113.N/32 on edgeN.
+  - prefix: 198.51.100.0/25
+    purpose: Simulated internet behind ISP A (isp3, AS 64503), isp3 Loopback1 198.51.100.1
+  - prefix: 198.51.100.128/25
+    purpose: Simulated internet behind ISP B (isp4, AS 64504), isp4 Loopback1 198.51.100.129
+
+topology:
+  nodes:
+    - label: edge1
+      node_definition: iol-xe
+      role: Enterprise edge (AS 65001) to ISP A, sets local preference 200 on routes from isp3
+      config_file: configs/edge1.cfg
+      x: 0
+      y: 0
+    - label: edge2
+      node_definition: iol-xe
+      role: Enterprise edge (AS 65001) to ISP B, prepends AS 65001 twice toward isp4
+      config_file: configs/edge2.cfg
+      x: 0
+      y: 200
+    - label: isp3
+      node_definition: iol-xe
+      role: Simulated ISP A (AS 64503), originates 198.51.100.0/25
+      config_file: configs/isp3.cfg
+      x: 200
+      y: 0
+    - label: isp4
+      node_definition: iol-xe
+      role: Simulated ISP B (AS 64504), originates 198.51.100.128/25
+      config_file: configs/isp4.cfg
+      x: 200
+      y: 200
+  links:
+    - a: edge1:Ethernet0/1
+      b: edge2:Ethernet0/1
+      description: Inside link, OSPF area 0 carrying the iBGP session, 10.1.2.0/24
+    - a: edge1:Ethernet0/2
+      b: isp3:Ethernet0/1
+      description: eBGP to ISP A, 10.1.3.0/24
+    - a: edge2:Ethernet0/2
+      b: isp4:Ethernet0/1
+      description: eBGP to ISP B, 10.2.4.0/24
+    - a: isp3:Ethernet0/2
+      b: isp4:Ethernet0/2
+      description: eBGP peering between the ISPs, 10.3.4.0/24
+
+checks:
+  - id: edge1-ospf-neighbors
+    type: ospf_neighbors
+    description: edge1 is FULL with edge2, so the loopbacks used by iBGP are reachable
+    node: edge1
+    expect:
+      count: 1
+      neighbors: [10.255.0.2]
+  - id: edge2-ospf-neighbors
+    type: ospf_neighbors
+    description: edge2 is FULL with edge1
+    node: edge2
+    expect:
+      count: 1
+      neighbors: [10.255.0.1]
+  - id: edge1-bgp-neighbors
+    type: bgp_neighbors
+    description: edge1 has its iBGP session to edge2 and its eBGP session to isp3
+    node: edge1
+    expect:
+      count: 2
+      neighbors: [10.255.0.2, 10.1.3.3]
+  - id: edge2-bgp-neighbors
+    type: bgp_neighbors
+    description: edge2 has its iBGP session to edge1 and its eBGP session to isp4
+    node: edge2
+    expect:
+      count: 2
+      neighbors: [10.255.0.1, 10.2.4.4]
+  - id: isp3-bgp-neighbors
+    type: bgp_neighbors
+    description: isp3 has sessions to its customer edge1 and its peer isp4
+    node: isp3
+    expect:
+      count: 2
+      neighbors: [10.1.3.1, 10.3.4.4]
+  - id: isp4-bgp-neighbors
+    type: bgp_neighbors
+    description: isp4 has sessions to its customer edge2 and its peer isp3
+    node: isp4
+    expect:
+      count: 2
+      neighbors: [10.2.4.2, 10.3.4.3]
+  - id: edge1-local-pref
+    type: cli_match
+    description: edge1 gives routes learned from isp3 local preference 200
+    node: edge1
+    command: show ip bgp 198.51.100.0/25
+    expect:
+      pattern: 'localpref 200, valid, external, best'
+  - id: edge2-outbound-via-edge1
+    type: cli_match
+    description: >-
+      edge2 reaches even ISP B's own prefix through edge1 and ISP A, because local
+      preference is compared before AS-path length
+    node: edge2
+    command: show ip bgp 198.51.100.128/25
+    expect:
+      pattern: 'localpref 200, valid, internal, best'
+  - id: isp4-sees-prepend
+    type: cli_match
+    description: isp4 receives the enterprise block from edge2 with AS 65001 prepended twice
+    node: isp4
+    command: show ip bgp 203.0.113.0/24
+    expect:
+      pattern: '65001 65001 65001'
+  - id: isp4-inbound-via-isp3
+    type: cli_match
+    description: >-
+      isp4 sends traffic for the enterprise block through isp3 rather than straight to
+      edge2, because the prepended path is longer
+    node: isp4
+    command: show ip route 203.0.113.0
+    expect:
+      pattern: 'from 10\.3\.4\.3'
+      not_pattern: 'from 10\.2\.4\.2'
+  - id: isp4-no-transit
+    type: cli_match
+    description: >-
+      edge2 advertises only the enterprise block to isp4, never ISP A's prefix, so AS
+      65001 is not a transit path between the ISPs
+    node: isp4
+    command: show ip bgp neighbors 10.2.4.2 routes
+    expect:
+      pattern: '203\.0\.113\.0'
+      not_pattern: '198\.51\.100\.'
+  - id: ping-edge2-isp-b
+    type: ping
+    description: edge2's public loopback reaches ISP B's prefix, by way of edge1 and isp3
+    node: edge2
+    target: 198.51.100.129
+    source: Loopback1
+  - id: ping-edge2-isp-a
+    type: ping
+    description: edge2's public loopback reaches ISP A's prefix through edge1
+    node: edge2
+    target: 198.51.100.1
+    source: Loopback1
+  - id: ping-isp4-edge2
+    type: ping
+    description: ISP B's prefix reaches edge2's public loopback, by way of isp3 and edge1
+    node: isp4
+    target: 203.0.113.2
+    source: Loopback1
+
+tested_on: []
