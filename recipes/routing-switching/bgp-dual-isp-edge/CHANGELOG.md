@@ -2,6 +2,16 @@
 
 All notable changes to this recipe. Versions follow the cookbook's [versioning rules](../../../docs/versioning.md).
 
+## [0.1.1] - 2026-10-17
+
+### Fixed
+
+- Moved each `router bgp` block after the interfaces. IOS rejected `neighbor ... update-source Loopback0` at boot because Loopback0 didn't exist yet, so the iBGP session between edge1 and edge2 stayed Idle. Found on the first real run (CML 2.10.0, IOL XE 17.18.02).
+
+### Added
+
+- Test runs recorded in `tested_on`: 0.1.0 failed as described above, and 0.1.1 passes all 14 checks on CML 2.10.0 with IOL XE 17.18.02. Also added `ram_mb`.
+
 ## [0.1.0] - 2026-10-17
 
 ### Added

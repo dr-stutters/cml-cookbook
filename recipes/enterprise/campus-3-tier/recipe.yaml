@@ -1,7 +1,7 @@
 schema_version: 1
 id: campus-3-tier
 title: Three-tier campus
-version: 0.1.0
+version: 0.2.0
 status: draft
 summary: >-
   A three-tier campus in five nodes: a routed core, a distribution pair that runs
@@ -14,6 +14,7 @@ maintainers: [dr-stutters]
 
 requirements:
   cml_min_version: "2.7"
+  ram_mb: 5120
   images:
     - node_definition: iol-xe
       refplat: true
@@ -32,7 +33,9 @@ addressing:
   - prefix: 172.16.20.0/24
     purpose: VLAN 20 (VOICE). HSRP virtual gateway .1, dist2 .2, dist3 .3
   - prefix: 172.16.99.0/24
-    purpose: VLAN 99 (MGMT). HSRP virtual gateway .1, dist2 .2, dist3 .3, accN .N
+    purpose: >-
+      VLAN 99 (MGMT). HSRP virtual gateway .1, dist2 .2, dist3 .3, accN .N.
+      Also the OSPF link between dist2 and dist3.
 
 topology:
   nodes:
@@ -99,18 +102,18 @@ checks:
       neighbors: [10.255.0.2, 10.255.0.3]
   - id: dist2-ospf-neighbors
     type: ospf_neighbors
-    description: dist2 is FULL with core1 only (its VLAN interfaces are passive)
+    description: dist2 is FULL with core1, and with dist3 over VLAN 99 (VLANs 10 and 20 are passive)
     node: dist2
     expect:
-      count: 1
-      neighbors: [10.255.0.1]
+      count: 2
+      neighbors: [10.255.0.1, 10.255.0.3]
   - id: dist3-ospf-neighbors
     type: ospf_neighbors
-    description: dist3 is FULL with core1 only (its VLAN interfaces are passive)
+    description: dist3 is FULL with core1, and with dist2 over VLAN 99 (VLANs 10 and 20 are passive)
     node: dist3
     expect:
-      count: 1
-      neighbors: [10.255.0.1]
+      count: 2
+      neighbors: [10.255.0.1, 10.255.0.2]
   - id: core1-ecmp-to-data
     type: cli_match
     description: core1 learns the VLAN 10 subnet from both distribution switches and load-shares across them
@@ -204,4 +207,29 @@ checks:
     node: acc5
     target: 172.16.1.1
 
-tested_on: []
+tested_on:
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-17"
+    result: fail
+    by: dr-stutters
+    images:
+      iol-xe: iol-xe-17-18-02
+      ioll2-xe: ioll2-xe-17-18-02
+    notes: >-
+      No OSPF adjacency formed: IOS rejected no passive-interface Ethernet0/1
+      because the port was still Layer 2 at that point in the file. IOL L2 also
+      rejected the track command, leaving HSRP tracking nothing. Fixed in
+      0.2.0. Built and checked by Claude Code following AGENTS.md.
+  - recipe_version: 0.2.0
+    cml_version: "2.10.0"
+    date: "2026-10-17"
+    result: pass
+    by: dr-stutters
+    images:
+      iol-xe: iol-xe-17-18-02
+      ioll2-xe: ioll2-xe-17-18-02
+    notes: >-
+      All 17 checks passed on a fresh build. A manual failover test (dist2
+      Ethernet0/1 shut) kept VLAN 10 reachable through dist3 over VLAN 99.
+      Built and checked by Claude Code following AGENTS.md.

@@ -43,15 +43,15 @@ Node counts are licensed nodes (external connectors and unmanaged switches don't
 
 | Recipe | What it builds | Nodes | Tier | Status | Version |
 |---|---|---|---|---|---|
-| [BGP dual-ISP edge](recipes/routing-switching/bgp-dual-isp-edge/) | Two edge routers in AS 65001, each with eBGP to its own simulated ISP and iBGP between them. ISP A is primary both ways: local preference pulls outbound traffic to it, AS-path prepending toward ISP B pushes inbound traffic to it, and a prefix list stops the enterprise becoming a transit AS. | 4 | free | draft | 0.1.0 |
-| [OSPF multi-area](recipes/routing-switching/ospf-multi-area/) | Five IOL routers in three OSPF areas: a backbone triangle, a normal area with an ASBR redistributing a LAN, and a totally stubby area that only sees a default route. | 5 | free | draft | 0.1.0 |
+| [BGP dual-ISP edge](recipes/routing-switching/bgp-dual-isp-edge/) | Two edge routers in AS 65001, each with eBGP to its own simulated ISP and iBGP between them. ISP A is primary both ways: local preference pulls outbound traffic to it, AS-path prepending toward ISP B pushes inbound traffic to it, and a prefix list stops the enterprise becoming a transit AS. | 4 | free | draft | 0.1.1 |
+| [OSPF multi-area](recipes/routing-switching/ospf-multi-area/) | Five IOL routers in three OSPF areas: a backbone triangle, a normal area with an ASBR redistributing a LAN, and a totally stubby area that only sees a default route. | 5 | free | draft | 0.1.1 |
 
 ### [Enterprise designs](recipes/enterprise/)
 
 | Recipe | What it builds | Nodes | Tier | Status | Version |
 |---|---|---|---|---|---|
-| [Three-tier campus](recipes/enterprise/campus-3-tier/) | A three-tier campus in five nodes: a routed core, a distribution pair that runs OSPF to the core and HSRP gateways for three VLANs, and two dual-homed access switches on Rapid PVST+. Each VLAN's spanning-tree root is also its HSRP active router, so the load splits across both distribution switches. | 5 | free | draft | 0.1.0 |
-| [DMVPN branch WAN](recipes/enterprise/dmvpn-branch-wan/) | A head-office hub and two branch spokes joined by DMVPN Phase 3 over a simulated internet. OSPF runs over the mGRE tunnel and sends branch-to-branch routes through the hub, then NHRP redirects build direct spoke-to-spoke tunnels on demand. | 4 | free | draft | 0.1.0 |
+| [Three-tier campus](recipes/enterprise/campus-3-tier/) | A three-tier campus in five nodes: a routed core, a distribution pair that runs OSPF to the core and HSRP gateways for three VLANs, and two dual-homed access switches on Rapid PVST+. Each VLAN's spanning-tree root is also its HSRP active router, so the load splits across both distribution switches. | 5 | free | draft | 0.2.0 |
+| [DMVPN branch WAN](recipes/enterprise/dmvpn-branch-wan/) | A head-office hub and two branch spokes joined by DMVPN Phase 3 over a simulated internet. OSPF runs over the mGRE tunnel and sends branch-to-branch routes through the hub, then NHRP redirects build direct spoke-to-spoke tunnels on demand. | 4 | free | draft | 0.1.1 |
 
 ### [Security](recipes/security/)
 

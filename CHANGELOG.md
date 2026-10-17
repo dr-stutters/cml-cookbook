@@ -14,3 +14,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Docs: design, recipe format, conventions, versioning, writing a recipe, and AGENTS.md for AI agents.
 - CI to validate pull requests, and a release workflow that tags each new recipe version.
 - First draft recipe: `ospf-multi-area`.
+
+### Fixed
+
+- Conventions: anything that depends on how the file configures an interface (`router bgp` with `update-source Loopback0`, `passive-interface` on a port that becomes routed) goes after the interfaces in a day-0 file. Putting it first made IOS drop those lines at boot.
+- AGENTS.md: after boot, check each node's console for day-0 lines the device rejected.
+- Conventions: note that IOL L2 has no object tracking.

@@ -5,7 +5,7 @@ recipes:
   title: BGP dual-ISP edge
   category: routing-switching
   path: recipes/routing-switching/bgp-dual-isp-edge
-  version: 0.1.0
+  version: 0.1.1
   status: draft
   replaced_by: null
   level: intermediate
@@ -23,19 +23,23 @@ recipes:
   - ipv4
   nodes: 4
   license_tier: free
-  ram_mb: null
+  ram_mb: 4096
   cml_min_version: '2.7'
   node_definitions:
   - iol-xe
   refplat_only: true
   external: []
   inputs: []
-  last_tested: null
+  last_tested:
+    recipe_version: 0.1.1
+    cml_version: 2.10.0
+    date: '2026-10-17'
+    result: pass
 - id: ospf-multi-area
   title: OSPF multi-area
   category: routing-switching
   path: recipes/routing-switching/ospf-multi-area
-  version: 0.1.0
+  version: 0.1.1
   status: draft
   replaced_by: null
   level: intermediate
@@ -48,19 +52,23 @@ recipes:
   - lsa-types
   nodes: 5
   license_tier: free
-  ram_mb: null
+  ram_mb: 5120
   cml_min_version: '2.7'
   node_definitions:
   - iol-xe
   refplat_only: true
   external: []
   inputs: []
-  last_tested: null
+  last_tested:
+    recipe_version: 0.1.0
+    cml_version: 2.10.0
+    date: '2026-10-17'
+    result: pass
 - id: campus-3-tier
   title: Three-tier campus
   category: enterprise
   path: recipes/enterprise/campus-3-tier
-  version: 0.1.0
+  version: 0.2.0
   status: draft
   replaced_by: null
   level: intermediate
@@ -78,7 +86,7 @@ recipes:
   - ipv4
   nodes: 5
   license_tier: free
-  ram_mb: null
+  ram_mb: 5120
   cml_min_version: '2.7'
   node_definitions:
   - iol-xe
@@ -86,12 +94,16 @@ recipes:
   refplat_only: true
   external: []
   inputs: []
-  last_tested: null
+  last_tested:
+    recipe_version: 0.2.0
+    cml_version: 2.10.0
+    date: '2026-10-17'
+    result: pass
 - id: dmvpn-branch-wan
   title: DMVPN branch WAN
   category: enterprise
   path: recipes/enterprise/dmvpn-branch-wan
-  version: 0.1.0
+  version: 0.1.1
   status: draft
   replaced_by: null
   level: intermediate
@@ -108,11 +120,15 @@ recipes:
   - ipv4
   nodes: 4
   license_tier: free
-  ram_mb: null
+  ram_mb: 4096
   cml_min_version: '2.7'
   node_definitions:
   - iol-xe
   refplat_only: true
   external: []
   inputs: []
-  last_tested: null
+  last_tested:
+    recipe_version: 0.1.0
+    cml_version: 2.10.0
+    date: '2026-10-17'
+    result: pass

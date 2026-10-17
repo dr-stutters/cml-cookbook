@@ -66,11 +66,13 @@ graph LR
 - [x] `cookbook validate`, `index`, `new`, `version-check`, `release-plan`
 - [x] CI and the release workflow
 - [x] First draft recipe: `ospf-multi-area`
-- [ ] Draft the rest of the first batch (below)
+- [x] Draft the next three recipes of the first batch (below)
 
-**Once a CML server is available**
+**With a CML server**
 
-- [ ] Test `ospf-multi-area` end to end, fix what breaks, record `tested_on` and `ram_mb`, and release it as `1.0.0` stable
+- [x] Test the four drafted recipes end to end on CML 2.10.0, fix what broke, and record `tested_on` and `ram_mb` (2026-10-17)
+- [ ] Promote the tested recipes to `1.0.0` stable
+- [ ] Draft and test the two security recipes
 - [ ] `cookbook render <id>`: write an importable CML lab YAML file for a recipe (needs the interface naming of each node definition, which has to be checked against a real server)
 - [ ] `cookbook check <id>`: run a recipe's checks against a running lab, as a reference implementation of the check rules
 - [ ] Attach rendered lab files to each recipe release
@@ -79,10 +81,10 @@ graph LR
 
 | Recipe | Category | Notes |
 |---|---|---|
-| `ospf-multi-area` | routing-switching | Drafted |
-| `bgp-dual-isp-edge` | routing-switching | eBGP to two simulated ISPs, iBGP between two edges |
-| `campus-3-tier` | enterprise | Core, distribution, access with VLANs, STP and HSRP |
-| `dmvpn-branch-wan` | enterprise | Hub and spokes over a simulated internet |
+| `ospf-multi-area` | routing-switching | Passes on CML 2.10.0 |
+| `bgp-dual-isp-edge` | routing-switching | Passes on CML 2.10.0 (after a config-ordering fix) |
+| `campus-3-tier` | enterprise | Passes on CML 2.10.0 (after a config-ordering fix and replacing HSRP tracking, which IOL L2 lacks) |
+| `dmvpn-branch-wan` | enterprise | Passes on CML 2.10.0 |
 | `ftd-internet-edge` | security | FTDv managed by FMCv. Needs non-refplat images and a lot of RAM. |
 | `dot1x-access-ise` | security | Access switch with 802.1X and MAB against an external ISE and AD. Need to confirm which CML switch image handles 802.1X well. |
 

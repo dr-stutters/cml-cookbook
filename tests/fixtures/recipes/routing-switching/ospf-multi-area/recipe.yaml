@@ -1,0 +1,149 @@
+schema_version: 1
+id: ospf-multi-area
+title: OSPF multi-area
+version: 0.1.0
+status: draft
+summary: >-
+  Five IOL routers in three OSPF areas: a backbone triangle, a normal area with
+  an ASBR redistributing a LAN, and a totally stubby area that only sees a default route.
+level: intermediate
+tags: [ospf, ipv4, igp, lsa-types]
+maintainers: [dr-stutters]
+
+requirements:
+  cml_min_version: "2.7"
+  images:
+    - node_definition: iol-xe
+      refplat: true
+
+addressing:
+  - prefix: 10.255.0.0/24
+    purpose: Loopback0 and router ID, 10.255.0.N/32 on rN
+  - prefix: 10.0.0.0/8
+    purpose: Point-to-point links, 10.X.Y.0/24 between rX and rY
+  - prefix: 172.16.4.0/24
+    purpose: r4 Loopback1, simulated customer LAN redistributed into OSPF (external type 2)
+  - prefix: 172.16.5.0/24
+    purpose: r5 Loopback1, LAN inside area 2
+
+topology:
+  nodes:
+    - label: r1
+      node_definition: iol-xe
+      role: Area 0 internal router
+      config_file: configs/r1.cfg
+      x: 0
+      y: -200
+    - label: r2
+      node_definition: iol-xe
+      role: ABR between area 0 and area 1
+      config_file: configs/r2.cfg
+      x: -200
+      y: 0
+    - label: r3
+      node_definition: iol-xe
+      role: ABR between area 0 and area 2 (totally stubby)
+      config_file: configs/r3.cfg
+      x: 200
+      y: 0
+    - label: r4
+      node_definition: iol-xe
+      role: Area 1 router and ASBR for 172.16.4.0/24
+      config_file: configs/r4.cfg
+      x: -400
+      y: 0
+    - label: r5
+      node_definition: iol-xe
+      role: Area 2 router (totally stubby)
+      config_file: configs/r5.cfg
+      x: 400
+      y: 0
+  links:
+    - a: r1:Ethernet0/1
+      b: r2:Ethernet0/1
+      description: Area 0, 10.1.2.0/24
+    - a: r1:Ethernet0/2
+      b: r3:Ethernet0/1
+      description: Area 0, 10.1.3.0/24
+    - a: r2:Ethernet0/2
+      b: r3:Ethernet0/2
+      description: Area 0, 10.2.3.0/24
+    - a: r2:Ethernet0/3
+      b: r4:Ethernet0/1
+      description: Area 1, 10.2.4.0/24
+    - a: r3:Ethernet0/3
+      b: r5:Ethernet0/1
+      description: Area 2, 10.3.5.0/24
+
+checks:
+  - id: r1-ospf-neighbors
+    type: ospf_neighbors
+    description: r1 is FULL with r2 and r3
+    node: r1
+    expect:
+      count: 2
+      neighbors: [10.255.0.2, 10.255.0.3]
+  - id: r2-ospf-neighbors
+    type: ospf_neighbors
+    description: r2 is FULL with r1, r3 and r4
+    node: r2
+    expect:
+      count: 3
+      neighbors: [10.255.0.1, 10.255.0.3, 10.255.0.4]
+  - id: r3-ospf-neighbors
+    type: ospf_neighbors
+    description: r3 is FULL with r1, r2 and r5
+    node: r3
+    expect:
+      count: 3
+      neighbors: [10.255.0.1, 10.255.0.2, 10.255.0.5]
+  - id: r4-ospf-neighbors
+    type: ospf_neighbors
+    description: r4 is FULL with r2
+    node: r4
+    expect:
+      count: 1
+      neighbors: [10.255.0.2]
+  - id: r5-ospf-neighbors
+    type: ospf_neighbors
+    description: r5 is FULL with r3
+    node: r5
+    expect:
+      count: 1
+      neighbors: [10.255.0.3]
+  - id: r1-external-route
+    type: cli_match
+    description: r1 learns r4's LAN as an OSPF external type 2 route
+    node: r1
+    command: show ip route 172.16.4.0
+    expect:
+      pattern: 'type extern 2'
+  - id: r1-inter-area-route
+    type: cli_match
+    description: r1 learns r5's LAN as an inter-area route
+    node: r1
+    command: show ip route 172.16.5.0
+    expect:
+      pattern: 'type inter area'
+  - id: r5-totally-stubby
+    type: cli_match
+    description: r5 has only an inter-area default route, with no inter-area or external specifics
+    node: r5
+    command: show ip route ospf
+    expect:
+      pattern: 'O\*IA\s+0\.0\.0\.0/0'
+      not_pattern: '10\.255\.0\.1/32|172\.16\.4\.0/24'
+  - id: ping-r4-r5
+    type: ping
+    description: r4 reaches r5's loopback across areas 1, 0 and 2
+    node: r4
+    target: 10.255.0.5
+    source: Loopback0
+  - id: ping-r1-external-lan
+    type: ping
+    description: r1 reaches the redistributed LAN behind r4
+    node: r1
+    target: 172.16.4.1
+    source: Loopback0
+
+tested_on: []

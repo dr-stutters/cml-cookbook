@@ -1,7 +1,7 @@
 schema_version: 1
 id: dmvpn-branch-wan
 title: DMVPN branch WAN
-version: 0.1.0
+version: 0.1.1
 status: draft
 summary: >-
   A head-office hub and two branch spokes joined by DMVPN Phase 3 over a simulated
@@ -13,6 +13,7 @@ maintainers: [dr-stutters]
 
 requirements:
   cml_min_version: "2.7"
+  ram_mb: 4096
   images:
     - node_definition: iol-xe
       refplat: true
@@ -148,4 +149,14 @@ checks:
     expect:
       pattern: '10\.3\.4\.3\s+172\.16\.0\.3\s+UP\s+\S+\s+D'
 
-tested_on: []
+tested_on:
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-17"
+    result: pass
+    by: dr-stutters
+    images:
+      iol-xe: iol-xe-17-18-02
+    notes: >-
+      All 10 checks passed on the first build, including the Phase 3
+      spoke-to-spoke shortcut. Built and checked by Claude Code following AGENTS.md.

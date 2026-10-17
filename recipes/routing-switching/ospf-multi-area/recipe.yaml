@@ -1,7 +1,7 @@
 schema_version: 1
 id: ospf-multi-area
 title: OSPF multi-area
-version: 0.1.0
+version: 0.1.1
 status: draft
 summary: >-
   Five IOL routers in three OSPF areas: a backbone triangle, a normal area with
@@ -12,6 +12,7 @@ maintainers: [dr-stutters]
 
 requirements:
   cml_min_version: "2.7"
+  ram_mb: 5120
   images:
     - node_definition: iol-xe
       refplat: true
@@ -146,4 +147,14 @@ checks:
     target: 172.16.4.1
     source: Loopback0
 
-tested_on: []
+tested_on:
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-17"
+    result: pass
+    by: dr-stutters
+    images:
+      iol-xe: iol-xe-17-18-02
+    notes: >-
+      All 10 checks passed on the first build; OSPF had converged
+      within a minute of boot. Built and checked by Claude Code following AGENTS.md.

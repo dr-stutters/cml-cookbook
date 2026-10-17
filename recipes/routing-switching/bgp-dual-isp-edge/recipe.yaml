@@ -1,7 +1,7 @@
 schema_version: 1
 id: bgp-dual-isp-edge
 title: BGP dual-ISP edge
-version: 0.1.0
+version: 0.1.1
 status: draft
 summary: >-
   Two edge routers in AS 65001, each with eBGP to its own simulated ISP and iBGP
@@ -14,6 +14,7 @@ maintainers: [dr-stutters]
 
 requirements:
   cml_min_version: "2.7"
+  ram_mb: 4096
   images:
     - node_definition: iol-xe
       refplat: true
@@ -177,4 +178,25 @@ checks:
     target: 203.0.113.2
     source: Loopback1
 
-tested_on: []
+tested_on:
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-17"
+    result: fail
+    by: dr-stutters
+    images:
+      iol-xe: iol-xe-17-18-02
+    notes: >-
+      The iBGP session between edge1 and edge2 stayed Idle: IOS rejected
+      update-source Loopback0 at boot because router bgp came before the
+      interfaces. edge1-bgp-neighbors, edge2-bgp-neighbors and
+      edge2-outbound-via-edge1 failed. Fixed in 0.1.1. Built and checked by Claude Code following AGENTS.md.
+  - recipe_version: 0.1.1
+    cml_version: "2.10.0"
+    date: "2026-10-17"
+    result: pass
+    by: dr-stutters
+    images:
+      iol-xe: iol-xe-17-18-02
+    notes: >-
+      All 14 checks passed on a fresh build. Built and checked by Claude Code following AGENTS.md.

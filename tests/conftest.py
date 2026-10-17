@@ -10,22 +10,24 @@ import yaml
 from cml_cookbook.recipes import load_yaml
 
 REPO = Path(__file__).resolve().parents[1]
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
 OSPF = Path("recipes/routing-switching/ospf-multi-area")
-
-
-def _only_ospf(directory: str, names: list[str]) -> list[str]:
-    """copytree filter: keep the category READMEs and ospf-multi-area, so tests don't change as recipes are added."""
-    if Path(directory).parent == REPO / "recipes":
-        return [name for name in names if (Path(directory) / name).is_dir() and name != OSPF.name]
-    return []
 
 
 @pytest.fixture
 def cookbook(tmp_path: Path) -> Path:
-    """A copy of this repo's schema, templates and the ospf-multi-area recipe, with a minimal README."""
+    """This repo's schema, templates and category READMEs, plus the frozen recipes in tests/fixtures/.
+
+    The fixture recipes are copies taken at a fixed version (ospf-multi-area 0.1.0, untested),
+    so tests don't change as the real recipes are tested, bumped or added to.
+    """
     for name in ("schema", "templates"):
         shutil.copytree(REPO / name, tmp_path / name)
-    shutil.copytree(REPO / "recipes", tmp_path / "recipes", ignore=_only_ospf)
+    for readme in (REPO / "recipes").glob("*/README.md"):
+        target = tmp_path / readme.relative_to(REPO)
+        target.parent.mkdir(parents=True)
+        shutil.copy(readme, target)
+    shutil.copytree(FIXTURES / "recipes", tmp_path / "recipes", dirs_exist_ok=True)
     (tmp_path / "README.md").write_text("# Test\n\n<!-- catalog:start -->\n<!-- catalog:end -->\n")
     return tmp_path
 

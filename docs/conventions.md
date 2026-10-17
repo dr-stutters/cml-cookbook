@@ -77,7 +77,9 @@ All IPv6 comes from the documentation prefix `2001:db8::/32` ([RFC 3849](https:/
 
 - Router ID is always set explicitly to the Loopback0 address.
 - OSPF uses process `1`, is enabled per interface (`ip ospf 1 area N`), and Ethernet links between two routers are `ip ospf network point-to-point`.
-- Config blocks for routing processes come before the interfaces in a day-0 file, so the router ID is set before any interface joins.
+- In a day-0 file, `router ospf` (and any IGP enabled per interface) comes before the interfaces, so the router ID is set before any interface joins.
+- Anything that depends on how the file configures an interface comes after the interfaces. That includes `router bgp` (its `update-source Loopback0` needs the loopback to exist), `passive-interface` for a port the file turns into a routed port with `no switchport`, `tunnel source Loopback0` and `source-interface Loopback0`. IOS rejects these lines at boot when they come too early, and the only sign is that the line is missing from the running config.
+- When a routing process needs both, split it into two blocks for the same process: the `router-id` before the interfaces, everything else after them.
 
 ## Credentials
 
@@ -126,5 +128,6 @@ These are public and deliberately weak. A recipe that bridges into a real networ
 ## Images
 
 - Prefer reference platform images, and `iol-xe` / `ioll2-xe` where they can do the job: they boot in under a minute and use little RAM.
+- `ioll2-xe` (IOL L2 XE 17.18) has no object tracking: `track` isn't a command on it, so HSRP and VRRP can't track an interface or route there. Get the same protection from routing instead, or use a platform that supports tracking.
 - Never commit image files, licenses or anything else from Cisco software downloads.
 - A recipe that needs a non-refplat image says where to get it in `requirements.images[].source`.

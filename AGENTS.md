@@ -39,6 +39,7 @@ Check all of these before creating anything, and stop with a clear explanation i
 
 - Start the lab and wait until every node reports booted. Slow images (FTDv, Catalyst 9000v, NX-OS) can take 10–30 minutes; poll patiently rather than failing early.
 - A booted node is not a converged network. Routing protocols need time after boot, which is why checks retry (step 6).
+- Look for day-0 lines the device rejected: search each node's console log for `% Invalid input`. Any match is a bug in the recipe. Report it even if every check passes.
 
 ### 5. Run the steps
 
