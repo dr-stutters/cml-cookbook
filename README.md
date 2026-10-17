@@ -7,7 +7,7 @@ Recipes for building network topologies in [Cisco Modeling Labs (CML)](https://d
 
 Each recipe is a fixed topology: the nodes, the links, a day-0 config for every node, and checks that say what "working" means (OSPF neighbors FULL, BGP Established, this host can ping that one). An agent reads the recipe, builds the lab in your CML, runs the checks and tells you which passed.
 
-> **Early days.** The first four recipes are stable, each tested twice on CML 2.10.0. More are on the way, along with `cookbook render` (importable CML lab files) and `cookbook check`. See the [roadmap](docs/design.md#roadmap).
+> **Early days.** The first four recipes are stable, each tested twice on CML 2.10.0. Each one imports straight into CML from its release. More are on the way, along with `cookbook check`. See the [roadmap](docs/design.md#roadmap).
 
 ## What's in a recipe
 
@@ -29,7 +29,9 @@ The full format is in [docs/recipe-format.md](docs/recipe-format.md) and the sha
 
 [AGENTS.md](AGENTS.md) tells the agent exactly how: checking your CML has the images and license capacity, building, waiting for convergence, running post-boot steps and checks, and reporting.
 
-**By hand.** Each recipe's README lists the nodes, links and addresses. Create them in the CML UI, paste each node's file from `configs/` into its config, and start the lab. Importable CML lab files, built from the recipes, will be attached to each recipe's [GitHub release](https://github.com/dr-stutters/cml-cookbook/releases) once `cookbook render` is done.
+**Import it.** Each recipe's [GitHub release](https://github.com/dr-stutters/cml-cookbook/releases) has a CML lab file, `<id>-v<version>.yaml`. Download it, import it in CML (Dashboard → Import) and start the lab: every node boots fully configured. You can also make the file yourself with the CLI: `cookbook render <id> -o lab.yaml`. Recipes that need values from your own environment don't ship a lab file; render those with `--input name=value` for each input their README lists.
+
+**By hand.** Each recipe's README lists the nodes, links and addresses. Create them in the CML UI, paste each node's file from `configs/` into its config, and start the lab.
 
 **A specific version.** Every recipe version is tagged `<id>/v<version>`, for example `ospf-multi-area/v1.2.0`. Ask for `ospf-multi-area@1.2.0` to get exactly that version; without a version you get the latest on `main`.
 
@@ -43,15 +45,15 @@ Node counts are licensed nodes (external connectors and unmanaged switches don't
 
 | Recipe | What it builds | Nodes | Tier | Status | Version |
 |---|---|---|---|---|---|
-| [BGP dual-ISP edge](recipes/routing-switching/bgp-dual-isp-edge/) | Two edge routers in AS 65001, each with eBGP to its own simulated ISP and iBGP between them. ISP A is primary both ways: local preference pulls outbound traffic to it, AS-path prepending toward ISP B pushes inbound traffic to it, and a prefix list stops the enterprise becoming a transit AS. | 4 | free | stable | 1.0.0 |
-| [OSPF multi-area](recipes/routing-switching/ospf-multi-area/) | Five IOL routers in three OSPF areas: a backbone triangle, a normal area with an ASBR redistributing a LAN, and a totally stubby area that only sees a default route. | 5 | free | stable | 1.0.0 |
+| [BGP dual-ISP edge](recipes/routing-switching/bgp-dual-isp-edge/) | Two edge routers in AS 65001, each with eBGP to its own simulated ISP and iBGP between them. ISP A is primary both ways: local preference pulls outbound traffic to it, AS-path prepending toward ISP B pushes inbound traffic to it, and a prefix list stops the enterprise becoming a transit AS. | 4 | free | stable | 1.0.1 |
+| [OSPF multi-area](recipes/routing-switching/ospf-multi-area/) | Five IOL routers in three OSPF areas: a backbone triangle, a normal area with an ASBR redistributing a LAN, and a totally stubby area that only sees a default route. | 5 | free | stable | 1.0.1 |
 
 ### [Enterprise designs](recipes/enterprise/)
 
 | Recipe | What it builds | Nodes | Tier | Status | Version |
 |---|---|---|---|---|---|
-| [Three-tier campus](recipes/enterprise/campus-3-tier/) | A three-tier campus in five nodes: a routed core, a distribution pair that runs OSPF to the core and HSRP gateways for three VLANs, and two dual-homed access switches on Rapid PVST+. Each VLAN's spanning-tree root is also its HSRP active router, so the load splits across both distribution switches. | 5 | free | stable | 1.0.0 |
-| [DMVPN branch WAN](recipes/enterprise/dmvpn-branch-wan/) | A head-office hub and two branch spokes joined by DMVPN Phase 3 over a simulated internet. OSPF runs over the mGRE tunnel and sends branch-to-branch routes through the hub, then NHRP redirects build direct spoke-to-spoke tunnels on demand. | 4 | free | stable | 1.0.0 |
+| [Three-tier campus](recipes/enterprise/campus-3-tier/) | A three-tier campus in five nodes: a routed core, a distribution pair that runs OSPF to the core and HSRP gateways for three VLANs, and two dual-homed access switches on Rapid PVST+. Each VLAN's spanning-tree root is also its HSRP active router, so the load splits across both distribution switches. | 5 | free | stable | 1.0.1 |
+| [DMVPN branch WAN](recipes/enterprise/dmvpn-branch-wan/) | A head-office hub and two branch spokes joined by DMVPN Phase 3 over a simulated internet. OSPF runs over the mGRE tunnel and sends branch-to-branch routes through the hub, then NHRP redirects build direct spoke-to-spoke tunnels on demand. | 4 | free | stable | 1.0.1 |
 
 ### [Security](recipes/security/)
 
@@ -72,7 +74,7 @@ New recipes, fixes, and test runs on your own CML are all welcome. See [CONTRIBU
 | [`recipes/`](recipes/) | Recipes, one folder per category |
 | [`schema/v1/`](schema/v1/) | JSON Schema for `recipe.yaml` |
 | [`templates/recipe/`](templates/recipe/) | Starting point for a new recipe (`cookbook new`) |
-| [`src/cml_cookbook/`](src/cml_cookbook/) | The `cookbook` CLI: validate, index, scaffold |
+| [`src/cml_cookbook/`](src/cml_cookbook/) | The `cookbook` CLI: validate, index, scaffold, render |
 | [`docs/`](docs/) | [Design](docs/design.md), [recipe format](docs/recipe-format.md), [conventions](docs/conventions.md), [versioning](docs/versioning.md), [writing a recipe](docs/writing-a-recipe.md) |
 | [`AGENTS.md`](AGENTS.md) | Instructions for AI agents building recipes or changing this repo |
 

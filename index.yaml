@@ -5,7 +5,7 @@ recipes:
   title: BGP dual-ISP edge
   category: routing-switching
   path: recipes/routing-switching/bgp-dual-isp-edge
-  version: 1.0.0
+  version: 1.0.1
   status: stable
   replaced_by: null
   level: intermediate
@@ -39,7 +39,7 @@ recipes:
   title: OSPF multi-area
   category: routing-switching
   path: recipes/routing-switching/ospf-multi-area
-  version: 1.0.0
+  version: 1.0.1
   status: stable
   replaced_by: null
   level: intermediate
@@ -68,7 +68,7 @@ recipes:
   title: Three-tier campus
   category: enterprise
   path: recipes/enterprise/campus-3-tier
-  version: 1.0.0
+  version: 1.0.1
   status: stable
   replaced_by: null
   level: intermediate
@@ -103,7 +103,7 @@ recipes:
   title: DMVPN branch WAN
   category: enterprise
   path: recipes/enterprise/dmvpn-branch-wan
-  version: 1.0.0
+  version: 1.0.1
   status: stable
   replaced_by: null
   level: intermediate

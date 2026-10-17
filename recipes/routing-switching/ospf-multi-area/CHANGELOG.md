@@ -2,6 +2,12 @@
 
 All notable changes to this recipe. Versions follow the cookbook's [versioning rules](../../../docs/versioning.md).
 
+## [1.0.1] - 2026-10-17
+
+### Changed
+
+- README: how to import the CML lab file now attached to each release (made by `cookbook render`). The lab itself is unchanged.
+
 ## [1.0.0] - 2026-10-17
 
 ### Changed

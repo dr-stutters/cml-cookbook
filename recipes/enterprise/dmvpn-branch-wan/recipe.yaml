@@ -1,7 +1,7 @@
 schema_version: 1
 id: dmvpn-branch-wan
 title: DMVPN branch WAN
-version: 1.0.0
+version: 1.0.1
 status: stable
 summary: >-
   A head-office hub and two branch spokes joined by DMVPN Phase 3 over a simulated

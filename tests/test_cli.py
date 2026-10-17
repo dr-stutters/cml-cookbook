@@ -31,7 +31,6 @@ def test_new(cookbook):
     assert (cookbook / "recipes" / "enterprise" / "campus-3-tier" / "recipe.yaml").is_file()
 
 
-def test_render_and_check_are_not_implemented(cookbook, capsys):
-    assert run(cookbook, "render", "ospf-multi-area") == 2
+def test_check_is_not_implemented(cookbook, capsys):
     assert run(cookbook, "check", "ospf-multi-area") == 2
     assert "isn't implemented yet" in capsys.readouterr().err

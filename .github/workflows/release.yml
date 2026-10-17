@@ -48,13 +48,23 @@ jobs:
             tag=$(jq -r .tag <<<"$entry")
             path=$(jq -r .path <<<"$entry")
             jq -r .notes <<<"$entry" > "$RUNNER_TEMP/notes.md"
-            asset="$RUNNER_TEMP/${id}-v${version}.zip"
-            (cd "$(dirname "$path")" && python -m zipfile -c "$asset" "$(basename "$path")")
+            assets=("$RUNNER_TEMP/${id}-v${version}.zip")
+            (cd "$(dirname "$path")" && python -m zipfile -c "${assets[0]}" "$(basename "$path")")
+            if [ "$(jq -r .renderable <<<"$entry")" = "true" ]; then
+              lab="$RUNNER_TEMP/${id}-v${version}.yaml"
+              cookbook render "$id" -o "$lab"
+              assets+=("$lab")
+              printf '\n\n**To build this lab:** download `%s`, import it in CML (Dashboard > Import), and start it.\n' \
+                "$(basename "$lab")" >> "$RUNNER_TEMP/notes.md"
+            else
+              printf '\n\n**To build this lab:** it needs values from your own environment, so render it yourself with `cookbook render %s --input name=value -o lab.yaml`. The recipe README lists the inputs.\n' \
+                "$id" >> "$RUNNER_TEMP/notes.md"
+            fi
             flags=(--latest=false)
             if [ "$(jq -r .prerelease <<<"$entry")" = "true" ]; then
               flags+=(--prerelease)
             fi
-            gh release create "$tag" "$asset" \
+            gh release create "$tag" "${assets[@]}" \
               --target "$GITHUB_SHA" \
               --title "$id v$version" \
               --notes-file "$RUNNER_TEMP/notes.md" \

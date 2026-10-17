@@ -30,6 +30,10 @@ Check all of these before creating anything, and stop with a clear explanation i
 
 ### 3. Build
 
+**If your tool can import CML topology YAML, import the recipe's rendered lab file.** It holds exactly the recipe's nodes, links and day-0 configs, so nothing is copied by hand. Use the `<id>-v<version>.yaml` attached to the recipe's GitHub release, or make it with `cookbook render <id> -o lab.yaml`, adding `--input name=value` for each input. Then skip to step 4.
+
+Otherwise, build it node by node:
+
 - Create one lab titled `<title> (<id> v<version>)`, with the recipe ID and version in the lab description.
 - Create each node in `topology.nodes` with exactly its `label` and `node_definition`, plus `image_definition`, `ram_mb`, `cpus`, `x` and `y` when given.
 - Set each node's day-0 configuration before it starts: the contents of `config_file` (relative to the recipe folder) or the inline `config`. Replace every `{{ inputs.<name> }}` with the user's value. Change nothing else.

@@ -55,6 +55,7 @@ On each link, router X uses `.X`. r4's Loopback1 (172.16.4.1/24) is redistribute
 Every node boots fully configured, so there are no post-boot steps.
 
 - **With an AI agent:** ask it to build `ospf-multi-area` from this repo and run its checks. [AGENTS.md](../../../AGENTS.md) tells it how.
+- **Import the lab file:** download `ospf-multi-area-v<version>.yaml` from the recipe's [latest release](https://github.com/dr-stutters/cml-cookbook/releases?q=ospf-multi-area), import it in CML (Dashboard → Import) and start it. Or make it yourself with `cookbook render ospf-multi-area -o lab.yaml`.
 - **By hand:** create the five nodes and five links in the table above in the CML UI, paste each file from [`configs/`](configs/) into the node's config before starting it, then start the lab.
 
 ## Checks
