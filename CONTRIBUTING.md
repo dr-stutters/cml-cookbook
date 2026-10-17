@@ -1,11 +1,12 @@
 # Contributing
 
-Thanks for helping. There are four main ways to contribute:
+Thanks for helping. There are five main ways to contribute:
 
 - **Ask for a recipe.** Open a [recipe request](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-request.yml).
 - **Report a broken recipe.** Open a [recipe bug](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml) with the recipe version, your CML version and the image versions.
 - **Test a draft on your CML.** Build it, run its checks, and send a pull request adding a `tested_on` entry, whether it passed or failed. This is how drafts become stable.
 - **Write or improve a recipe.** See below and [docs/writing-a-recipe.md](docs/writing-a-recipe.md).
+- **Pick up roadmap work.** The [milestones](https://github.com/dr-stutters/cml-cookbook/milestones) show what's planned. Issues labelled [`good first issue`](https://github.com/dr-stutters/cml-cookbook/labels/good%20first%20issue) or [`help wanted`](https://github.com/dr-stutters/cml-cookbook/labels/help%20wanted) are good places to start; comment on one before you begin so work isn't duplicated.
 
 ## Setup
 

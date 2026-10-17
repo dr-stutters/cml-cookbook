@@ -18,6 +18,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Changed
 
 - Design roadmap: the first four recipes are stable at 1.0.0.
+- The roadmap now lives in GitHub milestones and issues. `docs/design.md` summarizes it and links there.
 
 ### Fixed
 

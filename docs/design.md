@@ -60,42 +60,24 @@ graph LR
 
 ## Roadmap
 
-**Now (no CML server needed)**
+The roadmap lives on GitHub: each phase is a [milestone](https://github.com/dr-stutters/cml-cookbook/milestones) and each piece of work is an [issue](https://github.com/dr-stutters/cml-cookbook/issues). This section only summarizes it, so check GitHub for the current state.
 
-- [x] Recipe format, schema v1, conventions, versioning rules
-- [x] `cookbook validate`, `index`, `new`, `version-check`, `release-plan`
-- [x] CI and the release workflow
-- [x] First draft recipe: `ospf-multi-area`
-- [x] Draft the next three recipes of the first batch (below)
-
-**With a CML server**
-
-- [x] Test the four drafted recipes end to end on CML 2.10.0, fix what broke, and record `tested_on` and `ram_mb` (2026-10-17)
-- [x] Promote the tested recipes to `1.0.0` stable, after a second run rebuilt from GitHub
-- [ ] Draft and test the two security recipes
-- [ ] `cookbook render <id>`: write an importable CML lab YAML file for a recipe (needs the interface naming of each node definition, which has to be checked against a real server)
-- [ ] `cookbook check <id>`: run a recipe's checks against a running lab, as a reference implementation of the check rules
-- [ ] Attach rendered lab files to each recipe release
-
-**First batch**
-
-| Recipe | Category | Notes |
+| Milestone | What it delivers | Issues |
 |---|---|---|
-| `ospf-multi-area` | routing-switching | Stable, 1.0.0 |
-| `bgp-dual-isp-edge` | routing-switching | Stable, 1.0.0 (after a config-ordering fix) |
-| `campus-3-tier` | enterprise | Stable, 1.0.0 (after a config-ordering fix and replacing HSRP tracking, which IOL L2 lacks) |
-| `dmvpn-branch-wan` | enterprise | Stable, 1.0.0 |
-| `ftd-internet-edge` | security | FTDv managed by FMCv. Needs non-refplat images and a lot of RAM. |
-| `dot1x-access-ise` | security | Access switch with 802.1X and MAB against an external ISE and AD. Need to confirm which CML switch image handles 802.1X well. |
+| [M1: Toolkit 0.1.0](https://github.com/dr-stutters/cml-cookbook/milestone/1) | The first toolkit release, and `main` protected so CI checks can't be skipped | [#1](https://github.com/dr-stutters/cml-cookbook/issues/1), [#2](https://github.com/dr-stutters/cml-cookbook/issues/2) |
+| [M2: Importable labs](https://github.com/dr-stutters/cml-cookbook/milestone/2) | `cookbook render`, and an importable lab file on every recipe release | [#3](https://github.com/dr-stutters/cml-cookbook/issues/3), [#4](https://github.com/dr-stutters/cml-cookbook/issues/4) |
+| [M3: Security recipes](https://github.com/dr-stutters/cml-cookbook/milestone/3) | `ftd-internet-edge` and `dot1x-access-ise`, the first recipes to use inputs, post-boot steps and systems outside CML | [#5](https://github.com/dr-stutters/cml-cookbook/issues/5), [#6](https://github.com/dr-stutters/cml-cookbook/issues/6) |
+| [M4: Self-checking labs](https://github.com/dr-stutters/cml-cookbook/milestone/4) | `cookbook check`, so anyone can verify a running lab without an AI agent | [#7](https://github.com/dr-stutters/cml-cookbook/issues/7) |
+| [Backlog: more recipes](https://github.com/dr-stutters/cml-cookbook/milestone/5) | OSPFv3, multicast, VXLAN EVPN, and a format for break/fix labs | [#8](https://github.com/dr-stutters/cml-cookbook/issues/8)–[#11](https://github.com/dr-stutters/cml-cookbook/issues/11) |
 
-**Later**
+**Done so far**
 
-- `nxos-vxlan-evpn` (data center fabric, very RAM-hungry)
-- IPv6 variants of the routing recipes
-- Break/fix variants: the same topology with a deliberate fault and checks that pass once it's fixed
+- Recipe format, schema v1, conventions and versioning rules
+- `cookbook validate`, `index`, `new`, `version-check` and `release-plan`, plus CI and the release workflow
+- Four stable recipes, each tested twice on CML 2.10.0 (2026-10-17): `ospf-multi-area`, `bgp-dual-isp-edge` (after a config-ordering fix), `campus-3-tier` (after a config-ordering fix and replacing HSRP tracking, which IOL L2 lacks) and `dmvpn-branch-wan`
 
 ## Open questions
 
-- Which CML switch image supports 802.1X and MAB well enough for `dot1x-access-ise`.
-- How `cookbook render` should map interface labels to slots for each node definition, ideally without hard-coding a table per image.
+- Which CML switch image supports 802.1X and MAB well enough for `dot1x-access-ise`. Tracked in [#6](https://github.com/dr-stutters/cml-cookbook/issues/6).
+- How `cookbook render` should map interface labels to slots for each node definition. Tracked in [#3](https://github.com/dr-stutters/cml-cookbook/issues/3).
 - Whether the minimum CML version for IOL recipes should be 2.7. That depends on when the `iol-xe` node definitions first shipped, which needs checking.
