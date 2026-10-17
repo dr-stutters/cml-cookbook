@@ -93,9 +93,11 @@ Every node uses the same **lab-only** credentials:
 
 These are public and deliberately weak. A recipe that bridges into a real network through an external connector must say so at the top of its README and must never be exposed to an untrusted network.
 
+Appliances that enforce strong passwords, such as FTDv and FMCv, take theirs from a `secret` input named `admin_password` instead, and the node's `login` says so. Never put a fixed password for a box that sits on a bridged network in a public recipe.
+
 ## Day-0 configs
 
-- One file per node: `configs/<label>.cfg`.
+- One file per node: `configs/<label>.cfg`, or `configs/<label>.json` for node definitions whose day-0 config is JSON (FTDv, FMCv).
 - The file is the complete config the node boots with, ending in `end`.
 - Standard lines at the top of every IOS / IOS-XE file:
 

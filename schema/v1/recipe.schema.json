@@ -188,6 +188,16 @@
         "role": { "type": "string" },
         "config_file": { "type": "string" },
         "config": { "type": "string" },
+        "login": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["username", "password"],
+          "description": "Console login for tools that run CLI commands on the node, when its day-0 config sets one the node definition doesn't default to.",
+          "properties": {
+            "username": { "type": "string", "minLength": 1 },
+            "password": { "type": "string", "minLength": 1 }
+          }
+        },
         "ram_mb": { "type": "integer", "minimum": 1 },
         "cpus": { "type": "integer", "minimum": 1 },
         "x": { "type": "integer" },

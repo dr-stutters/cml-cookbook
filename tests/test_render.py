@@ -200,3 +200,57 @@ def test_every_recipe_in_the_repo_renders():
             for l in topology["links"]
         }
         assert rendered == {f"{l['a']} {l['b']}" for l in recipe.data["topology"]["links"]}, recipe.id
+
+
+def test_ftdv_fmcv_and_switch_layouts(tmp_path):
+    nodes = [
+        {"label": "ext", "node_definition": "external_connector", "config": "System Bridge"},
+        {"label": "ums", "node_definition": "unmanaged_switch"},
+        {"label": "fmc1", "node_definition": "fmcv"},
+        {"label": "ftd2", "node_definition": "ftdv"},
+        {"label": "isp3", "node_definition": "iol-xe"},
+    ]
+    links = [
+        {"a": "ext:port", "b": "ums:port0"},
+        {"a": "fmc1:eth0", "b": "ums:port1"},
+        {"a": "ftd2:Management0/0", "b": "ums:port2"},
+        {"a": "ftd2:GigabitEthernet0/2", "b": "isp3:Ethernet0/1"},
+    ]
+    topology = lab(render(make_recipe(tmp_path, nodes, links)))
+    by_label = {n["label"]: n for n in topology["nodes"]}
+    assert by_label["ext"]["configuration"] == "System Bridge"
+    assert by_label["ext"]["interfaces"] == [{"id": "i0", "label": "port", "slot": 0, "type": "physical"}]
+    assert [i["label"] for i in by_label["ums"]["interfaces"]] == [f"port{n}" for n in range(8)]
+    assert by_label["fmc1"]["interfaces"] == [
+        {"id": "i0", "label": "lo", "type": "loopback"},
+        {"id": "i1", "label": "eth0", "slot": 0, "type": "physical"},
+    ]
+    ftd = [(i["label"], i["slot"]) for i in by_label["ftd2"]["interfaces"]]
+    assert ftd == [
+        ("Management0/0", 0),
+        ("donotuse1", 1),
+        ("GigabitEthernet0/0", 2),
+        ("GigabitEthernet0/1", 3),
+        ("GigabitEthernet0/2", 4),
+    ]
+
+
+def test_reserved_ftdv_slot_cant_be_linked(tmp_path):
+    nodes = [{"label": "ftd2", "node_definition": "ftdv"}, {"label": "r1", "node_definition": "iol-xe"}]
+    recipe = make_recipe(tmp_path, nodes, [{"a": "ftd2:donotuse1", "b": "r1:Ethernet0/1"}])
+    with pytest.raises(RenderError, match="isn't a physical interface of ftdv"):
+        render(recipe)
+
+
+def test_login_becomes_the_pyats_credentials(tmp_path):
+    nodes = [
+        {
+            "label": "ftd2",
+            "node_definition": "ftdv",
+            "login": {"username": "admin", "password": "{{ inputs.admin_password }}"},
+        }
+    ]
+    inputs = [{"name": "admin_password", "description": "admin password", "type": "secret"}]
+    recipe = make_recipe(tmp_path, nodes, [], inputs)
+    node = lab(render(recipe, {"admin_password": "Str0ng!Pass"}))["nodes"][0]
+    assert node["pyats"] == {"username": "admin", "password": "Str0ng!Pass"}

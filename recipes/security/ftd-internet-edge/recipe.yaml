@@ -1,0 +1,258 @@
+schema_version: 1
+id: ftd-internet-edge
+title: FTD internet edge with FMC
+version: 0.1.0
+status: draft
+summary: >-
+  An FTDv internet edge managed by an FMCv in the same lab: the FTD registers itself at day 0,
+  then FMC gives it zones, an access policy that blocks one site, a default route and PAT, so
+  an inside host reaches a simulated internet that has no route back to it.
+level: intermediate
+tags: [firewall, ftd, fmc, nat, pat, access-control, internet-edge]
+maintainers: [dr-stutters]
+
+requirements:
+  cml_min_version: "2.7"
+  ram_mb: 43008
+  images:
+    - node_definition: fmcv
+      refplat: false
+      source: https://software.cisco.com/download/home (Secure Firewall Management Center Virtual, KVM image, added to CML as an image definition)
+      notes: Tested with FMCv 10.0.1. Needs 32 GB of RAM, and its first boot takes 25-45 minutes.
+    - node_definition: ftdv
+      refplat: false
+      source: https://software.cisco.com/download/home (Secure Firewall Threat Defense Virtual, KVM image, added to CML as an image definition)
+      notes: Tested with FTDv 10.0.0. FMC must run the same version or a newer one.
+    - node_definition: iol-xe
+      refplat: true
+    - node_definition: external_connector
+      refplat: true
+    - node_definition: unmanaged_switch
+      refplat: true
+  external:
+    - name: management-network
+      description: >-
+        A network the external connector's bridge (System Bridge) reaches, with two free
+        addresses for fmc1 and ftd2's management port. You and your tools reach FMC's web UI
+        and REST API there.
+
+inputs:
+  - name: admin_password
+    description: >-
+      Password for the admin user on fmc1 and ftd2 (web UI, REST API and CLI). FTD and FMC need
+      a strong one: at least 8 characters with upper and lower case, a digit and a symbol, and no
+      dictionary words. Avoid " and \, which would break the day-0 JSON.
+    type: secret
+  - name: fmc_ip
+    description: Management address for fmc1 on your management network
+    type: ipv4
+    example: 192.0.2.10
+  - name: ftd_mgmt_ip
+    description: Address for ftd2's Management0/0 port on the same network
+    type: ipv4
+    example: 192.0.2.11
+  - name: mgmt_mask
+    description: Subnet mask of the management network
+    type: ipv4
+    example: 255.255.255.0
+  - name: mgmt_gateway
+    description: Default gateway on the management network
+    type: ipv4
+    example: 192.0.2.1
+  - name: mgmt_dns
+    description: DNS server fmc1 and ftd2 use
+    type: ipv4
+    example: 192.0.2.53
+
+addressing:
+  - prefix: 10.2.3.0/24
+    purpose: Outside, ftd2 (10.2.3.2) to isp3 (10.2.3.3)
+  - prefix: 10.2.4.0/24
+    purpose: Inside, ftd2 (10.2.4.2) to h4 (10.2.4.4). PAT translates it to 10.2.3.2.
+  - prefix: 198.51.100.1/32
+    purpose: isp3 Loopback1, stand-in for a web server on the internet
+  - prefix: 198.51.100.66/32
+    purpose: isp3 Loopback2, stand-in for a site the access policy blocks
+
+topology:
+  nodes:
+    - label: ext
+      node_definition: external_connector
+      role: Bridges the management switch to your network
+      config: System Bridge
+      x: -400
+      y: -200
+    - label: ums
+      node_definition: unmanaged_switch
+      role: Management segment for fmc1 and ftd2
+      x: -200
+      y: -200
+    - label: fmc1
+      node_definition: fmcv
+      role: Firewall Management Center, manages ftd2
+      config_file: configs/fmc1.json
+      login:
+        username: admin
+        password: "{{ inputs.admin_password }}"
+      x: 0
+      y: -200
+    - label: ftd2
+      node_definition: ftdv
+      role: Internet edge firewall, registers itself to fmc1 at day 0
+      config_file: configs/ftd2.json
+      login:
+        username: admin
+        password: "{{ inputs.admin_password }}"
+      x: -200
+      y: 0
+    - label: isp3
+      node_definition: iol-xe
+      role: Simulated ISP and internet, with no route back to the inside network
+      config_file: configs/isp3.cfg
+      x: 0
+      y: 0
+    - label: h4
+      node_definition: iol-xe
+      role: Inside host (an IOL router standing in for a PC)
+      config_file: configs/h4.cfg
+      x: -400
+      y: 0
+  links:
+    - a: ext:port
+      b: ums:port0
+      description: Management network, bridged out of CML
+    - a: fmc1:eth0
+      b: ums:port1
+      description: fmc1 management
+    - a: ftd2:Management0/0
+      b: ums:port2
+      description: ftd2 management, how it reaches fmc1
+    - a: ftd2:GigabitEthernet0/0
+      b: isp3:Ethernet0/1
+      description: Outside, 10.2.3.0/24 (FMC calls this port Ethernet0/0)
+    - a: ftd2:GigabitEthernet0/1
+      b: h4:Ethernet0/1
+      description: Inside, 10.2.4.0/24 (FMC calls this port Ethernet0/1)
+
+steps:
+  - id: fmc-evaluation-licence
+    title: Turn on FMC's evaluation licence
+    mode: manual
+    instructions: |
+      Wait until fmc1's web UI answers at https://{{ inputs.fmc_ip }}. That's several minutes
+      after its console shows "login:", and the first boot takes 25-45 minutes. Log in as admin
+      with the admin_password input, then choose System > Licenses > Smart Licenses >
+      Evaluation Mode. With the REST API: POST /api/fmc_platform/v1/license/smartlicenses
+      with {"registrationType": "EVALUATION"}. FMC refuses to register devices until this is done.
+    verify: [fmc1-evaluation-mode]
+  - id: fmc-access-policy
+    title: Create the zones and the access control policy
+    mode: manual
+    instructions: |
+      In fmc1, create two security zones of type Routed: inside and outside.
+      Create a host network object blocked-site for 198.51.100.66.
+      Create an access control policy named cookbook-edge with the default action
+      "Access Control: Block All Traffic" and these rules, in this order:
+        1. block-site: source zone inside, destination network blocked-site, action Block
+        2. allow-out: source zone inside, destination zone outside, action Allow
+  - id: fmc-register-ftd2
+    title: Register ftd2 in fmc1
+    mode: manual
+    instructions: |
+      ftd2 already points at fmc1 from its day-0 config (show managers lists it as Pending).
+      In fmc1, choose Devices > Device Management > Add > Device and enter:
+      host {{ inputs.ftd_mgmt_ip }}, display name ftd2, registration key cookbook,
+      access control policy cookbook-edge, performance tier FTDv5, and the Essentials licence.
+      Wait for the registration and first deployment to finish, about 6 minutes.
+      (REST API: POST /api/fmc_config/v1/domain/{domainUUID}/devices/devicerecords.)
+    verify: [ftd2-registered]
+  - id: fmc-ftd2-interfaces-route-nat
+    title: Configure ftd2's interfaces, default route and PAT
+    mode: manual
+    instructions: |
+      In fmc1, edit ftd2. FMC lists its data ports as Ethernet0/x, which CML calls GigabitEthernet0/x.
+        - Ethernet0/0: name outside, security zone outside, enabled, static IPv4 10.2.3.2/24
+        - Ethernet0/1: name inside, security zone inside, enabled, static IPv4 10.2.4.2/24
+      Under Routing > Static Route, add an IPv4 route on interface outside: network any-ipv4,
+      gateway 10.2.3.3.
+      Create a NAT policy named cookbook-edge-nat for Threat Defense, with one auto NAT rule:
+      a network object inside-lan for 10.2.4.0/24, type Dynamic, source interface inside,
+      destination interface outside, translated address "Destination Interface IP". Assign the
+      policy to ftd2.
+  - id: fmc-deploy
+    title: Deploy to ftd2
+    mode: manual
+    instructions: |
+      In fmc1, choose Deploy > Deployment, select ftd2 and deploy. Wait until the deployment
+      succeeds. If FMC refuses with "another deployment in progress", the deployment it started
+      after registration hasn't finished yet: wait a minute and try again.
+    verify: [ftd2-interfaces, ftd2-default-route]
+
+checks:
+  - id: fmc1-evaluation-mode
+    type: manual
+    description: fmc1 is licensed in evaluation mode
+    instructions: >-
+      In fmc1, System > Licenses > Smart Licenses shows Evaluation Mode. With the REST API, GET
+      /api/fmc_platform/v1/license/smartlicenses returns regStatus EVALUATION.
+  - id: ftd2-registered
+    type: cli_match
+    description: ftd2's registration with fmc1 has completed
+    node: ftd2
+    command: show managers
+    timeout: 900
+    expect:
+      pattern: 'Registration\s*:\s*Completed'
+  - id: ftd2-interfaces
+    type: cli_match
+    description: The outside and inside interfaces are up with the addresses FMC deployed
+    node: ftd2
+    command: show interface ip brief
+    expect:
+      pattern: '(?=[\s\S]*Ethernet0/0\s+10\.2\.3\.2\s+YES\s+\S+\s+up\s+up)[\s\S]*Ethernet0/1\s+10\.2\.4\.2\s+YES\s+\S+\s+up\s+up'
+  - id: ftd2-default-route
+    type: cli_match
+    description: ftd2 has the default route through isp3
+    node: ftd2
+    command: show route
+    expect:
+      pattern: 'S\*\s+0\.0\.0\.0 0\.0\.0\.0 \[1/0\] via 10\.2\.3\.3, outside'
+  - id: ping-h4-internet
+    type: ping
+    description: >-
+      h4 reaches the web server behind isp3. isp3 has no route to 10.2.4.0/24, so the replies
+      only get back because ftd2 translates h4 to its outside address.
+    node: h4
+    target: 198.51.100.1
+  - id: ping-h4-blocked-site
+    type: ping
+    description: The access policy's block-site rule stops h4 reaching 198.51.100.66
+    node: h4
+    target: 198.51.100.66
+    expect:
+      success_max: 0
+  - id: ftd2-pat-hits
+    type: cli_match
+    description: The auto NAT rule for the inside network has translated traffic
+    node: ftd2
+    command: show nat
+    expect:
+      pattern: 'source dynamic \S+ interface\s+translate_hits = [1-9]'
+
+tested_on:
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-17"
+    result: pass
+    by: dr-stutters
+    images:
+      fmcv: fmcv-10-0-1
+      ftdv: ftdv-10-0-0
+      iol-xe: iol-xe-17-18-02
+    notes: >-
+      Imported from cookbook render output, management bridged with System Bridge. ftd2 booted
+      in about 8 minutes and fmc1's REST API answered after about 30. The five FMC steps were
+      done over FMC's REST API exactly as written, and all 7 checks passed (translate_hits = 5,
+      the blocked site 0/5). The first deploy attempt was refused while FMC's post-registration
+      deployment was still running; retrying a minute later succeeded. Built and checked by
+      Claude Code following AGENTS.md.

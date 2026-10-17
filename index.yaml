@@ -132,3 +132,47 @@ recipes:
     cml_version: 2.10.0
     date: '2026-10-17'
     result: pass
+- id: ftd-internet-edge
+  title: FTD internet edge with FMC
+  category: security
+  path: recipes/security/ftd-internet-edge
+  version: 0.1.0
+  status: draft
+  replaced_by: null
+  level: intermediate
+  summary: 'An FTDv internet edge managed by an FMCv in the same lab: the FTD registers itself at day
+    0, then FMC gives it zones, an access policy that blocks one site, a default route and PAT, so an
+    inside host reaches a simulated internet that has no route back to it.'
+  tags:
+  - firewall
+  - ftd
+  - fmc
+  - nat
+  - pat
+  - access-control
+  - internet-edge
+  nodes: 4
+  license_tier: free
+  ram_mb: 43008
+  cml_min_version: '2.7'
+  node_definitions:
+  - external_connector
+  - fmcv
+  - ftdv
+  - iol-xe
+  - unmanaged_switch
+  refplat_only: false
+  external:
+  - management-network
+  inputs:
+  - admin_password
+  - fmc_ip
+  - ftd_mgmt_ip
+  - mgmt_mask
+  - mgmt_gateway
+  - mgmt_dns
+  last_tested:
+    recipe_version: 0.1.0
+    cml_version: 2.10.0
+    date: '2026-10-17'
+    result: pass

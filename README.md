@@ -57,7 +57,9 @@ Node counts are licensed nodes (external connectors and unmanaged switches don't
 
 ### [Security](recipes/security/)
 
-_No recipes yet._
+| Recipe | What it builds | Nodes | Tier | Status | Version |
+|---|---|---|---|---|---|
+| [FTD internet edge with FMC](recipes/security/ftd-internet-edge/) | An FTDv internet edge managed by an FMCv in the same lab: the FTD registers itself at day 0, then FMC gives it zones, an access policy that blocks one site, a default route and PAT, so an inside host reaches a simulated internet that has no route back to it. | 4 | free | draft | 0.1.0 |
 
 <!-- catalog:end -->
 

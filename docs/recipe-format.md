@@ -145,6 +145,7 @@ topology:
 | `role` | Short description of what this node does in the lab. |
 | `config_file` | Path to a day-0 config, relative to the recipe folder. |
 | `config` | Inline day-0 config. Use it for short values such as an external connector's bridge name. Can't be combined with `config_file`. |
+| `login` | `username` and `password` for console tools that run CLI commands on the node, when its day-0 config sets a login the node definition doesn't default to (FTDv, FMCv). The password can be an input placeholder. `cookbook render` writes it as the node's pyATS credentials. |
 | `ram_mb`, `cpus` | Optional overrides of the node definition's defaults. |
 | `x`, `y` | Optional canvas position. |
 

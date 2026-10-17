@@ -35,7 +35,7 @@ Check all of these before creating anything, and stop with a clear explanation i
 Otherwise, build it node by node:
 
 - Create one lab titled `<title> (<id> v<version>)`, with the recipe ID and version in the lab description.
-- Create each node in `topology.nodes` with exactly its `label` and `node_definition`, plus `image_definition`, `ram_mb`, `cpus`, `x` and `y` when given.
+- Create each node in `topology.nodes` with exactly its `label` and `node_definition`, plus `image_definition`, `ram_mb`, `cpus`, `x` and `y` when given. If a node has `login`, give your console tool those credentials (with inputs filled in).
 - Set each node's day-0 configuration before it starts: the contents of `config_file` (relative to the recipe folder) or the inline `config`. Replace every `{{ inputs.<name> }}` with the user's value. Change nothing else.
 - Create each link in `topology.links` between exactly the named interfaces (`<label>:<interface label>`). Create missing interfaces on a node if the tool requires it.
 
