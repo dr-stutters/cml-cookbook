@@ -71,7 +71,7 @@ graph LR
 **With a CML server**
 
 - [x] Test the four drafted recipes end to end on CML 2.10.0, fix what broke, and record `tested_on` and `ram_mb` (2026-10-17)
-- [ ] Promote the tested recipes to `1.0.0` stable
+- [x] Promote the tested recipes to `1.0.0` stable, after a second run rebuilt from GitHub
 - [ ] Draft and test the two security recipes
 - [ ] `cookbook render <id>`: write an importable CML lab YAML file for a recipe (needs the interface naming of each node definition, which has to be checked against a real server)
 - [ ] `cookbook check <id>`: run a recipe's checks against a running lab, as a reference implementation of the check rules
@@ -81,10 +81,10 @@ graph LR
 
 | Recipe | Category | Notes |
 |---|---|---|
-| `ospf-multi-area` | routing-switching | Passes on CML 2.10.0 |
-| `bgp-dual-isp-edge` | routing-switching | Passes on CML 2.10.0 (after a config-ordering fix) |
-| `campus-3-tier` | enterprise | Passes on CML 2.10.0 (after a config-ordering fix and replacing HSRP tracking, which IOL L2 lacks) |
-| `dmvpn-branch-wan` | enterprise | Passes on CML 2.10.0 |
+| `ospf-multi-area` | routing-switching | Stable, 1.0.0 |
+| `bgp-dual-isp-edge` | routing-switching | Stable, 1.0.0 (after a config-ordering fix) |
+| `campus-3-tier` | enterprise | Stable, 1.0.0 (after a config-ordering fix and replacing HSRP tracking, which IOL L2 lacks) |
+| `dmvpn-branch-wan` | enterprise | Stable, 1.0.0 |
 | `ftd-internet-edge` | security | FTDv managed by FMCv. Needs non-refplat images and a lot of RAM. |
 | `dot1x-access-ise` | security | Access switch with 802.1X and MAB against an external ISE and AD. Need to confirm which CML switch image handles 802.1X well. |
 

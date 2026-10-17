@@ -1,6 +1,6 @@
 # OSPF multi-area
 
-> **Status: draft.** Passed all of its checks on CML 2.10.0 with IOL XE 17.18.02 on 2026-10-17, but isn't marked stable yet. Please [report anything that doesn't work](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
+> **Status: stable.** Tested on CML 2.10.0 with IOL XE 17.18.02 (2026-10-17). If it doesn't work for you, please [report it](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
 
 Five IOL routers in three OSPF areas. The backbone is a triangle of r1, r2 and r3. Area 1 hangs off r2 and contains r4, which redistributes a LAN as an external route. Area 2 hangs off r3 and is totally stubby, so r5 sees nothing outside its area except a default route.
 

@@ -1,8 +1,8 @@
 schema_version: 1
 id: bgp-dual-isp-edge
 title: BGP dual-ISP edge
-version: 0.1.1
-status: draft
+version: 1.0.0
+status: stable
 summary: >-
   Two edge routers in AS 65001, each with eBGP to its own simulated ISP and iBGP
   between them. ISP A is primary both ways: local preference pulls outbound traffic
@@ -200,3 +200,15 @@ tested_on:
       iol-xe: iol-xe-17-18-02
     notes: >-
       All 14 checks passed on a fresh build. Built and checked by Claude Code following AGENTS.md.
+  - recipe_version: 0.1.1
+    cml_version: "2.10.0"
+    date: "2026-10-17"
+    result: pass
+    by: dr-stutters
+    images:
+      iol-xe: iol-xe-17-18-02
+    notes: >-
+      Rebuilt from a fresh clone of github.com/dr-stutters/cml-cookbook at
+      088954b. All 14 checks passed. edge2-outbound-via-edge1 needed one retry
+      while routes were still propagating, well inside its timeout. Built and
+      checked by Claude Code following AGENTS.md.

@@ -1,8 +1,8 @@
 schema_version: 1
 id: dmvpn-branch-wan
 title: DMVPN branch WAN
-version: 0.1.1
-status: draft
+version: 1.0.0
+status: stable
 summary: >-
   A head-office hub and two branch spokes joined by DMVPN Phase 3 over a simulated
   internet. OSPF runs over the mGRE tunnel and sends branch-to-branch routes through
@@ -160,3 +160,15 @@ tested_on:
     notes: >-
       All 10 checks passed on the first build, including the Phase 3
       spoke-to-spoke shortcut. Built and checked by Claude Code following AGENTS.md.
+  - recipe_version: 0.1.1
+    cml_version: "2.10.0"
+    date: "2026-10-17"
+    result: pass
+    by: dr-stutters
+    images:
+      iol-xe: iol-xe-17-18-02
+    notes: >-
+      Rebuilt from a fresh clone of github.com/dr-stutters/cml-cookbook at
+      088954b. All 10 checks passed. The spoke-to-spoke shortcut formed from the
+      recipe's own ping check, with no earlier branch-to-branch traffic. Built
+      and checked by Claude Code following AGENTS.md.

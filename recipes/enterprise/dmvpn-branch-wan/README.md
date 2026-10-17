@@ -1,6 +1,6 @@
 # DMVPN branch WAN
 
-> **Status: draft.** Passed all of its checks on CML 2.10.0 with IOL XE 17.18.02 on 2026-10-17, but isn't marked stable yet. Please [report anything that doesn't work](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
+> **Status: stable.** Tested on CML 2.10.0 with IOL XE 17.18.02 (2026-10-17). If it doesn't work for you, please [report it](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
 
 A head office and two branches connected over a simulated internet with DMVPN Phase 3. Each site has one internet link. hub1 is the NHRP server; the spokes register their internet (NBMA) addresses with it and form a single multipoint GRE overlay, 172.16.0.0/24, with OSPF running over it.
 

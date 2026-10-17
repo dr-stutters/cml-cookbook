@@ -1,6 +1,6 @@
 # Three-tier campus
 
-> **Status: draft.** Passed all of its checks on CML 2.10.0 with IOL XE and IOL L2 XE 17.18.02 on 2026-10-17, but isn't marked stable yet. Please [report anything that doesn't work](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
+> **Status: stable.** Tested on CML 2.10.0 with IOL XE and IOL L2 XE 17.18.02 (2026-10-17). If it doesn't work for you, please [report it](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
 
 The classic campus design, cut down to five nodes. A routed core connects to a pair of distribution switches over OSPF. The distribution pair is the Layer 3 boundary: it owns the gateways for three VLANs with HSRP and trunks those VLANs down to two access switches, each dual-homed to both distribution switches. Rapid PVST+ blocks one uplink per VLAN on each access switch.
 

@@ -5,8 +5,8 @@ recipes:
   title: BGP dual-ISP edge
   category: routing-switching
   path: recipes/routing-switching/bgp-dual-isp-edge
-  version: 0.1.1
-  status: draft
+  version: 1.0.0
+  status: stable
   replaced_by: null
   level: intermediate
   summary: 'Two edge routers in AS 65001, each with eBGP to its own simulated ISP and iBGP between them.
@@ -39,8 +39,8 @@ recipes:
   title: OSPF multi-area
   category: routing-switching
   path: recipes/routing-switching/ospf-multi-area
-  version: 0.1.1
-  status: draft
+  version: 1.0.0
+  status: stable
   replaced_by: null
   level: intermediate
   summary: 'Five IOL routers in three OSPF areas: a backbone triangle, a normal area with an ASBR redistributing
@@ -60,7 +60,7 @@ recipes:
   external: []
   inputs: []
   last_tested:
-    recipe_version: 0.1.0
+    recipe_version: 0.1.1
     cml_version: 2.10.0
     date: '2026-10-17'
     result: pass
@@ -68,8 +68,8 @@ recipes:
   title: Three-tier campus
   category: enterprise
   path: recipes/enterprise/campus-3-tier
-  version: 0.2.0
-  status: draft
+  version: 1.0.0
+  status: stable
   replaced_by: null
   level: intermediate
   summary: 'A three-tier campus in five nodes: a routed core, a distribution pair that runs OSPF to the
@@ -103,8 +103,8 @@ recipes:
   title: DMVPN branch WAN
   category: enterprise
   path: recipes/enterprise/dmvpn-branch-wan
-  version: 0.1.1
-  status: draft
+  version: 1.0.0
+  status: stable
   replaced_by: null
   level: intermediate
   summary: A head-office hub and two branch spokes joined by DMVPN Phase 3 over a simulated internet.
@@ -128,7 +128,7 @@ recipes:
   external: []
   inputs: []
   last_tested:
-    recipe_version: 0.1.0
+    recipe_version: 0.1.1
     cml_version: 2.10.0
     date: '2026-10-17'
     result: pass

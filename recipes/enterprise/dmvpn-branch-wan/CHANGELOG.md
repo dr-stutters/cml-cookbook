@@ -2,6 +2,12 @@
 
 All notable changes to this recipe. Versions follow the cookbook's [versioning rules](../../../docs/versioning.md).
 
+## [1.0.0] - 2026-10-17
+
+### Changed
+
+- First stable release. The topology, configs and checks are unchanged from 0.1.1. A second, independent run, rebuilt from a fresh clone of the GitHub repo at 088954b, passed all 10 checks on CML 2.10.0 and is recorded in `tested_on`.
+
 ## [0.1.1] - 2026-10-17
 
 ### Added

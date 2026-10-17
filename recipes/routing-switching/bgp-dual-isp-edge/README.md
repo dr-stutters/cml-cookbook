@@ -1,6 +1,6 @@
 # BGP dual-ISP edge
 
-> **Status: draft.** Passed all of its checks on CML 2.10.0 with IOL XE 17.18.02 on 2026-10-17, but isn't marked stable yet. Please [report anything that doesn't work](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
+> **Status: stable.** Tested on CML 2.10.0 with IOL XE 17.18.02 (2026-10-17). If it doesn't work for you, please [report it](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
 
 An enterprise in AS 65001 is multihomed to two simulated ISPs through two edge routers. edge1 connects to ISP A (isp3), edge2 to ISP B (isp4), and the edges run iBGP between their loopbacks over OSPF. Both edges advertise the enterprise's public block, 203.0.113.0/24.
 

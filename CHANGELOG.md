@@ -15,6 +15,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - CI to validate pull requests, and a release workflow that tags each new recipe version.
 - First draft recipe: `ospf-multi-area`.
 
+### Changed
+
+- Design roadmap: the first four recipes are stable at 1.0.0.
+
 ### Fixed
 
 - Conventions: anything that depends on how the file configures an interface (`router bgp` with `update-source Loopback0`, `passive-interface` on a port that becomes routed) goes after the interfaces in a day-0 file. Putting it first made IOS drop those lines at boot.
