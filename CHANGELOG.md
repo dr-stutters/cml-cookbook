@@ -15,6 +15,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - AGENTS.md: agents whose tools can import CML topology YAML import the rendered lab file instead of building node by node.
 
+### Fixed
+
+- The release workflow gives the Latest badge back to the newest toolkit release after publishing recipe releases. GitHub had been marking recipe releases as Latest despite `--latest=false`.
+
 ## [0.1.0] - 2026-10-17
 
 ### Added
