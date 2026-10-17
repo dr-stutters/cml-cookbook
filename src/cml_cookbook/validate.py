@@ -65,6 +65,8 @@ def semantic_issues(recipe: Recipe) -> list[Issue]:
         labels.add(node["label"])
         if "config" in node:
             texts.append((f"{where}.config", node["config"]))
+        if "login" in node:
+            texts.append((f"{where}.login.password", node["login"]["password"]))
         if "config_file" in node:
             config_path = (recipe.path / node["config_file"]).resolve()
             if not config_path.is_relative_to(recipe_root):

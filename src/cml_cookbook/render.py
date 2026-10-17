@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ipaddress
 import re
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -31,27 +30,36 @@ class NodeDefinition:
     """How CML lays out a node definition's interfaces, as seen in a lab exported from CML."""
 
     loopback: str | None  # label of the interface CML creates with type loopback, if any
+    physical: tuple[str, ...]  # physical interface labels, in slot order
     default_slots: int  # physical interfaces CML creates for a new node
-    max_slots: int
-    physical_label: Callable[[int], str]  # slot number -> interface label
 
     def slot_of(self, label: str) -> int | None:
-        for slot in range(self.max_slots):
-            if self.physical_label(slot) == label:
-                return slot
-        return None
+        if label.startswith("donotuse") or label not in self.physical:
+            return None
+        return self.physical.index(label)
 
 
-def _iol(slot: int) -> str:
-    return f"Ethernet{slot // 4}/{slot % 4}"
+_IOL = tuple(f"Ethernet{slot // 4}/{slot % 4}" for slot in range(32))
 
-
-# Read from labs exported from CML 2.10.0 with IOL XE and IOL L2 XE 17.18.02: Loopback0 is a
-# loopback interface, and slot N is Ethernet{N // 4}/{N % 4} (Ethernet1/0 is slot 4).
-# To support another node definition, export a lab that uses it and add it here.
+# From labs exported from CML 2.10.0 and its node definitions (cml_get_node_definition):
+# - IOL XE / IOL L2 XE 17.18: Loopback0 is a loopback interface; slot N is Ethernet{N // 4}/{N % 4}.
+# - FTDv 10.0: Management0/0, a reserved slot CML names donotuse1, then GigabitEthernet0/0-0/7.
+# - FMCv 10.0: lo plus a single eth0.
+# - External connector: one port; unmanaged switch: port0-port31.
+# To support another node definition, export a lab that uses it and add it here, with a test.
 NODE_DEFINITIONS: dict[str, NodeDefinition] = {
-    "iol-xe": NodeDefinition(loopback="Loopback0", default_slots=4, max_slots=32, physical_label=_iol),
-    "ioll2-xe": NodeDefinition(loopback="Loopback0", default_slots=4, max_slots=32, physical_label=_iol),
+    "iol-xe": NodeDefinition(loopback="Loopback0", physical=_IOL, default_slots=4),
+    "ioll2-xe": NodeDefinition(loopback="Loopback0", physical=_IOL, default_slots=4),
+    "ftdv": NodeDefinition(
+        loopback=None,
+        physical=("Management0/0", "donotuse1", *(f"GigabitEthernet0/{n}" for n in range(8))),
+        default_slots=4,
+    ),
+    "fmcv": NodeDefinition(loopback="lo", physical=("eth0",), default_slots=1),
+    "external_connector": NodeDefinition(loopback=None, physical=("port",), default_slots=1),
+    "unmanaged_switch": NodeDefinition(
+        loopback=None, physical=tuple(f"port{n}" for n in range(32)), default_slots=8
+    ),
 }
 
 
@@ -165,7 +173,7 @@ def build_topology(recipe: Recipe, values: dict[str, str]) -> dict[str, Any]:
             slot = definition.slot_of(interface)
             if slot is None:
                 node_definition = next(n["node_definition"] for n in recipe.nodes if n["label"] == label)
-                first, last = definition.physical_label(0), definition.physical_label(definition.max_slots - 1)
+                first, last = definition.physical[0], definition.physical[-1]
                 raise RenderError(
                     f"topology.links[{i}].{side}: {interface!r} isn't a physical interface of "
                     f"{node_definition} (expected {first} to {last})"
@@ -183,7 +191,7 @@ def build_topology(recipe: Recipe, values: dict[str, str]) -> dict[str, Any]:
         slots = max([definition.default_slots - 1, *used_slots[label].values()]) + 1
         for slot in range(slots):
             interface_id = f"i{len(interfaces)}"
-            interface_label = definition.physical_label(slot)
+            interface_label = definition.physical[slot]
             interfaces.append({"id": interface_id, "label": interface_label, "slot": slot, "type": "physical"})
             interface_ids[(label, interface_label)] = interface_id
 
@@ -198,6 +206,11 @@ def build_topology(recipe: Recipe, values: dict[str, str]) -> dict[str, Any]:
             if key in node:
                 entry[field] = node[key]
         entry["tags"] = []
+        if "login" in node:
+            entry["pyats"] = {
+                "username": node["login"]["username"],
+                "password": _fill(node["login"]["password"], values, f"topology.nodes[{i}].login.password"),
+            }
         if "config_file" in node:
             text = (recipe.path / node["config_file"]).read_text(encoding="utf-8")
             entry["configuration"] = _fill(text, values, node["config_file"])

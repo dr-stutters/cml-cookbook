@@ -144,3 +144,11 @@ def test_ids_unique_across_categories(cookbook):
 def test_folder_without_recipe_yaml(cookbook):
     (cookbook / "recipes" / "security" / "half-done").mkdir()
     assert any("missing recipe.yaml" in m for m in errors(cookbook))
+
+
+def test_login_password_placeholder_must_be_declared(cookbook, edit_recipe):
+    edit_recipe(
+        cookbook / OSPF,
+        lambda d: d["topology"]["nodes"][0].update(login={"username": "admin", "password": "{{ inputs.pw }}"}),
+    )
+    assert any("undeclared input 'pw'" in m for m in errors(cookbook))
