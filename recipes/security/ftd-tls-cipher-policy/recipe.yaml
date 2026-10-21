@@ -1,0 +1,385 @@
+schema_version: 1
+id: ftd-tls-cipher-policy
+title: FTD TLS cipher policy
+version: 0.1.0
+status: draft
+summary: >-
+  An FTDv between a TLS client and a TLS server whose ports each pin a protocol version or cipher
+  suite, managed by an FMC you already have: FTD logs the version and cipher of every TLS session
+  to an in-lab syslog collector without decrypting it, then blocks old versions and weak ciphers,
+  and a Decrypt - Resign rule shows what a terminating firewall does to the cipher on each side.
+level: intermediate
+tags: [firewall, ftd, fmc, tls, decryption, cipher-suites, syslog]
+maintainers: [dr-stutters]
+
+requirements:
+  cml_min_version: "2.7"
+  ram_mb: 10240
+  images:
+    - node_definition: ftdv
+      refplat: false
+      source: https://software.cisco.com/download/home (Secure Firewall Threat Defense Virtual, KVM image, added to CML as an image definition)
+      notes: Tested with FTDv 10.0.0. Your FMC must run the same version or a newer one.
+    - node_definition: alpine
+      refplat: true
+    - node_definition: external_connector
+      refplat: true
+    - node_definition: unmanaged_switch
+      refplat: true
+  external:
+    - name: fmc
+      description: >-
+        An existing Secure Firewall Management Center that the management network reaches, with
+        room for one more device. Evaluation mode is enough. The lab doesn't include an FMC.
+      min_version: "7.6"
+    - name: management-network
+      description: >-
+        A network the external connector's bridge (System Bridge) reaches, with one free address
+        for ftd1's Management0/0 port and a route to the FMC.
+    - name: internet
+      description: >-
+        CML's NAT connectors must reach the internet: h2 and srv3 download OpenSSL, rsyslog and
+        the OpenSSL 1.1.1w source at boot. Nothing else in the lab uses that path.
+
+inputs:
+  - name: admin_password
+    description: >-
+      Password for the admin user on ftd1 (CLI). FTD needs a strong one: at least 8 characters
+      with upper and lower case, a digit and a symbol, and no dictionary words. Avoid " and \,
+      which would break the day-0 JSON.
+    type: secret
+  - name: fmc_ip
+    description: Management address of your FMC
+    type: ipv4
+    example: 198.18.134.76
+  - name: ftd1_mgmt_ip
+    description: Address for ftd1's Management0/0 port on your management network
+    type: ipv4
+    example: 198.18.128.236
+  - name: mgmt_mask
+    description: Subnet mask of the management network
+    type: ipv4
+    example: 255.255.192.0
+  - name: mgmt_gateway
+    description: Default gateway on the management network
+    type: ipv4
+    example: 198.18.128.1
+  - name: mgmt_dns
+    description: DNS server ftd1 uses
+    type: ipv4
+    example: 198.18.133.1
+
+addressing:
+  - prefix: 10.1.2.0/24
+    purpose: Inside, ftd1 (10.1.2.1) to h2 (10.1.2.2), the TLS client
+  - prefix: 10.1.3.0/24
+    purpose: Outside, ftd1 (10.1.3.1) to srv3 (10.1.3.3), the TLS servers and ftd1's syslog collector
+
+topology:
+  nodes:
+    - label: ext
+      node_definition: external_connector
+      role: Bridges ftd1's management port to your network, where the FMC is
+      config: System Bridge
+      x: -200
+      y: -400
+    - label: ums
+      node_definition: unmanaged_switch
+      role: Management segment
+      x: 0
+      y: -400
+    - label: ftd1
+      node_definition: ftdv
+      role: Firewall between the client and the servers; registers itself to your FMC at day 0
+      config_file: configs/ftd1.json
+      login:
+        username: admin
+        password: "{{ inputs.admin_password }}"
+      x: 0
+      y: -200
+    - label: h2
+      node_definition: alpine
+      role: TLS client (OpenSSL 3, plus OpenSSL 1.1.1w for RC4 and 3DES); runs tls-matrix
+      config_file: configs/h2.cfg
+      cpus: 2
+      ram_mb: 1024
+      x: -200
+      y: -200
+    - label: srv3
+      node_definition: alpine
+      role: TLS servers on six ports, one per protocol/cipher profile; syslog collector for ftd1
+      config_file: configs/srv3.cfg
+      cpus: 2
+      ram_mb: 1024
+      x: 200
+      y: -200
+    - label: ext2
+      node_definition: external_connector
+      role: Internet access for h2's package downloads (CML NAT)
+      config: NAT
+      x: -200
+      y: 0
+    - label: ext3
+      node_definition: external_connector
+      role: Internet access for srv3's package downloads (CML NAT)
+      config: NAT
+      x: 200
+      y: 0
+  links:
+    - a: ext:port
+      b: ums:port0
+      description: Management network, bridged out of CML
+    - a: ftd1:Management0/0
+      b: ums:port1
+      description: ftd1 management, how it reaches the FMC
+    - a: ftd1:GigabitEthernet0/0
+      b: srv3:eth0
+      description: Outside, 10.1.3.0/24 (FMC calls this port Ethernet0/0)
+    - a: ftd1:GigabitEthernet0/1
+      b: h2:eth0
+      description: Inside, 10.1.2.0/24 (FMC calls this port Ethernet0/1)
+    - a: h2:eth1
+      b: ext2:port
+      description: h2's package downloads (NAT)
+    - a: srv3:eth1
+      b: ext3:port
+      description: srv3's package downloads (NAT)
+
+steps:
+  - id: hosts-ready
+    title: Wait for h2 and srv3 to finish their setup
+    mode: manual
+    instructions: |
+      Both hosts install their packages and build OpenSSL 1.1.1w in the background after boot,
+      which takes 5-10 minutes. Run tls-lab-status on each until it shows "setup: ready".
+      On srv3 it also lists the six TLS servers and the syslog collector as listening.
+    verify: [h2-ready, srv3-ready]
+  - id: fmc-objects
+    title: Create the zones and the access control policy
+    mode: manual
+    instructions: |
+      In your FMC (https://{{ inputs.fmc_ip }}), pick the domain: FMC only registers devices
+      in a leaf domain, so if it has child domains (Global/<something>), create everything in
+      this recipe in one of them. Nothing named tls-* should exist there yet.
+      Create two security zones of type Routed: tls-inside and tls-outside. Create an access
+      control policy named tls-cipher-acp with the default action "Access Control: Block All
+      Traffic", and one rule:
+        allow-out: source zone tls-inside, destination zone tls-outside, action Allow,
+        logging at the end of the connection, to the Event Viewer and to the Syslog Server
+        (the rule's own syslog checkbox; REST: logEnd true, enableSyslog true).
+  - id: fmc-register
+    title: Register ftd1 in your FMC
+    mode: manual
+    instructions: |
+      ftd1 already points at your FMC from its day-0 config (show managers lists it as
+      Pending). In the FMC, choose Devices > Device Management > Add > Device and enter host
+      {{ inputs.ftd1_mgmt_ip }}, display name tls-cipher-ftd1, registration key cookbook,
+      access control policy tls-cipher-acp, performance tier FTDv5 and the Essentials licence.
+      Wait for the registration and first deployment to finish, about 6 minutes.
+    verify: [ftd1-registered]
+  - id: fmc-interfaces-syslog
+    title: Configure ftd1's interfaces and send its logs to srv3
+    mode: manual
+    instructions: |
+      In the FMC, edit tls-cipher-ftd1. FMC lists its data ports as Ethernet0/x, which CML
+      calls GigabitEthernet0/x.
+        - Ethernet0/0: name outside, security zone tls-outside, enabled, static IPv4 10.1.3.1/24
+        - Ethernet0/1: name inside, security zone tls-inside, enabled, static IPv4 10.1.2.1/24
+      No routes or NAT are needed: both hosts are on directly connected networks.
+      Create a Threat Defense platform settings policy named tls-cipher-ps: Syslog > Logging
+      Setup enabled, Syslog Servers: 10.1.3.3, UDP 514, zone tls-outside; Logging
+      Destinations: syslog servers at level informational. Assign it to tls-cipher-ftd1.
+      In tls-cipher-acp, Logging: send syslog messages using the platform settings, severity
+      informational. Deploy to tls-cipher-ftd1. Run tls-matrix on h2: every case passes, and
+      tls-events -v on srv3 shows only SSLServerName for them: without a decryption policy FTD
+      doesn't log the TLS version or cipher.
+    verify: [h2-reaches-srv3, h2-modern-tls13]
+  - id: fmc-decryption-visibility
+    title: Link a decryption policy so connection events carry the TLS version and cipher
+    mode: manual
+    instructions: |
+      Create a decryption policy named tls-cipher-dec with the default action Do not decrypt
+      and no rules. Select it in tls-cipher-acp (Advanced > Decryption policy) and deploy.
+      Nothing is decrypted, but every TLS connection event now carries SSLVersion,
+      SSLCipherSuite, SSLActualAction, SSLRuleName, SSLFlowStatus, SSLServerCertStatus and
+      SSLCertificate (a SHA-1 fingerprint): FTD reads them from the handshake, whose ServerHello
+      isn't encrypted even in TLS 1.3. Run tls-matrix on h2, then tls-events on srv3: each
+      session shows the version and cipher suite h2 negotiated, RC4 and 3DES included.
+    verify: [srv3-sees-tls-fields]
+  - id: fmc-block-weak
+    title: Block old protocol versions and weak cipher suites
+    mode: manual
+    instructions: |
+      Create a cipher suite list object named tls-weak-ciphers (Objects > PKI > Cipher Suite
+      List) with these predefined suites:
+        TLS_RSA_WITH_RC4_128_SHA, TLS_RSA_WITH_3DES_EDE_CBC_SHA, TLS_RSA_WITH_AES_128_CBC_SHA,
+        TLS_RSA_WITH_AES_256_CBC_SHA, TLS_RSA_WITH_AES_128_CBC_SHA256,
+        TLS_RSA_WITH_AES_256_CBC_SHA256, TLS_RSA_WITH_AES_128_GCM_SHA256,
+        TLS_RSA_WITH_AES_256_GCM_SHA384, TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA,
+        TLS_DHE_RSA_WITH_AES_128_CBC_SHA, TLS_DHE_RSA_WITH_AES_256_CBC_SHA,
+        TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+        TLS_ECDHE_RSA_WITH_RC4_128_SHA, TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
+        TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+      (REST: POST object/ciphersuitelists with literals {"name": <IANA name>, "value":
+      <decimal code>}; FMC answers "The SHA is incorrect" for a name it doesn't know.)
+      In tls-cipher-dec, add two rules, both zones tls-inside to tls-outside, action Block
+      with reset, logging at the end of the connection:
+        1. block-old-tls: Version condition SSL v3.0, TLS 1.0 and TLS 1.1
+        2. block-weak-ciphers: Cipher Suite condition tls-weak-ciphers
+      Deploy. FMC accepts a Version condition on Block rules; it refuses one on Do not decrypt
+      and Decrypt - Resign rules. The cipher suite condition matches the suite the server chose
+      in its ServerHello, not the list the client offered, so pref-weak (the client offers
+      ECDHE-GCM first, the server picks AES128-SHA) is blocked too.
+    verify: [h2-old-tls-blocked, h2-weak-ciphers-blocked, h2-strong-allowed]
+  - id: fmc-step-up
+    title: Decrypt - Resign the server-prefers-weak ports and see what happens to the cipher
+    mode: manual
+    instructions: |
+      Create a self-signed internal CA named tls-cipher-resign-ca (Objects > PKI > Internal
+      CAs > Generate CA). In tls-cipher-dec, add a third rule BELOW the two block rules:
+        resign-stepup: zones tls-inside to tls-outside, destination ports TCP 10443, 11443
+        and 12443, action Decrypt - Resign with tls-cipher-resign-ca, logging at the end of
+        the connection.
+      Under Undecryptable Actions, set Unsupported Cipher Suite to Block with reset. Deploy,
+      then run tls-matrix on h2 and tls-events on srv3. What to expect:
+        - pref-rc4: srv3 prefers RC4, which FTD can't decrypt, so FTD strips RC4 from the
+          ClientHello it forwards. srv3 falls back to ECDHE-RSA-AES128-GCM-SHA256 and h2 gets
+          the same suite from FTD: the session is stepped up, decrypted and allowed.
+        - pref-weak, pref-3des, only-3des: FTD can decrypt these suites, so it leaves them in
+          the ClientHello, srv3 picks the weak one and block-weak-ciphers resets the session.
+          FTD never negotiates a stronger suite on its own: the client leg always gets the
+          suite the server chose.
+        - only-rc4: with no other suite to fall back to, FTD forwards the ClientHello
+          unchanged, srv3 picks RC4 and the Unsupported Cipher Suite action resets it. Left at
+          its default (inherit the default action, Do not decrypt), RC4 would pass.
+      Order matters: with resign-stepup ABOVE the block rules, the decryptable weak suites are
+      decrypted and allowed instead of blocked.
+    verify: [h2-rc4-stepped-up, h2-only-rc4-blocked, h2-3des-still-blocked]
+
+checks:
+  - id: h2-ready
+    type: cli_match
+    description: h2 installed OpenSSL 3 and built OpenSSL 1.1.1w
+    node: h2
+    command: tls-lab-status
+    timeout: 1200
+    expect:
+      pattern: 'setup: ready'
+  - id: srv3-ready
+    type: cli_match
+    description: srv3 runs its six TLS servers and the syslog collector
+    node: srv3
+    command: tls-lab-status
+    timeout: 1200
+    expect:
+      pattern: 'setup: ready'
+      not_pattern: 'DOWN'
+  - id: ftd1-registered
+    type: cli_match
+    description: ftd1's registration with your FMC has completed
+    node: ftd1
+    command: show managers
+    timeout: 900
+    expect:
+      pattern: 'Registration\s*:\s*Completed'
+  - id: h2-reaches-srv3
+    type: cli_match
+    description: h2 reaches srv3 through ftd1
+    node: h2
+    command: ping -c 3 -W 2 10.1.3.3
+    expect:
+      pattern: ' 0% packet loss'
+  - id: h2-modern-tls13
+    type: cli_match
+    description: A TLS 1.3 session from h2 to srv3 passes ftd1
+    node: h2
+    command: tls-matrix modern13
+    expect:
+      pattern: 'modern13\s+443\s+ok\s+TLSv1\.3'
+  - id: srv3-sees-tls-fields
+    type: cli_match
+    description: ftd1's connection events at srv3 carry the TLS version and cipher suite
+    node: srv3
+    command: tls-events 30
+    expect:
+      pattern: 'TLSv1\.[0-3]\s+TLS_\w+\s+(Do Not Decrypt|Block With Reset|Decrypt \(Resign\))'
+  - id: h2-old-tls-blocked
+    type: cli_match
+    description: TLS 1.0 and 1.1 sessions are reset by ftd1
+    node: h2
+    command: tls-matrix tls10 tls11
+    expect:
+      pattern: 'tls10\s+8443\s+RESET'
+      not_pattern: '\sok\s'
+  - id: h2-weak-ciphers-blocked
+    type: cli_match
+    description: Sessions where the server picked a weak cipher suite are reset by ftd1
+    node: h2
+    command: tls-matrix rsa-cbc pref-weak pref-3des
+    expect:
+      pattern: 'pref-weak\s+10443\s+RESET'
+      not_pattern: '\sok\s'
+  - id: h2-strong-allowed
+    type: cli_match
+    description: TLS 1.3 and TLS 1.2 with ECDHE and AES-GCM still pass
+    node: h2
+    command: tls-matrix modern13 modern12
+    expect:
+      pattern: 'modern12\s+443\s+ok'
+      not_pattern: 'RESET|TIMEOUT|FAILED'
+  - id: h2-rc4-stepped-up
+    type: cli_match
+    description: The RC4-preferring server ends up on ECDHE AES-GCM, on both legs, through ftd1's re-signing CA
+    node: h2
+    command: tls-matrix pref-rc4
+    expect:
+      pattern: 'pref-rc4\s+12443\s+ok\s+TLSv1\.2\s+TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256\s+TLSv1\.2\s+TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256\s+tls-cipher-resign-ca'
+  - id: h2-only-rc4-blocked
+    type: cli_match
+    description: An RC4-only session (no suite to fall back to) is reset by the Unsupported Cipher Suite action
+    node: h2
+    command: tls-matrix only-rc4
+    expect:
+      pattern: 'only-rc4\s+12443\s+RESET'
+  - id: h2-3des-still-blocked
+    type: cli_match
+    description: A decryptable weak suite is still blocked with the resign rule below the block rules
+    node: h2
+    command: tls-matrix pref-3des
+    expect:
+      pattern: 'pref-3des\s+11443\s+RESET'
+
+tested_on:
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-21"
+    result: partial
+    by: dr-stutters
+    images:
+      ftdv: ftdv-10-0-0
+      alpine: alpine-base-3-23-3
+    notes: >-
+      Every step and check passed against FMC 10.0.1, but not from one clean build: the first
+      boot showed that the Alpine image has no /usr/local/sbin (the setup script moved to
+      /etc/tls-lab/setup, h2 and srv3 were wiped and rebooted), tls-events was rewritten to
+      compact columns during the run, and the visibility and step-up steps were reordered to
+      what the run found. Needs a clean run from this version.
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-21"
+    result: pass
+    by: dr-stutters
+    images:
+      ftdv: ftdv-10-0-0
+      alpine: alpine-base-3-23-3
+    notes: >-
+      Clean run of this version's h2 and srv3: both wiped and booted from configs/h2.cfg and
+      configs/srv3.cfg unchanged, and both reached "setup: ready" within 7 minutes with no
+      console errors. ftd1 and the FMC side (FMC 10.0.1) were kept from the first run, in the
+      state the last step leaves them (resign-stepup below the two block rules, Unsupported
+      Cipher Suite set to Block with reset), and all 12 checks passed against that state. The
+      earlier steps' in-between states (no TLS fields before the decryption policy, the resign
+      rule above the block rules) weren't repeated. One snag that a full build doesn't hit: CML
+      gave the rebuilt srv3 new MAC addresses and ftd1 still had the old one in its ARP cache
+      (FTD keeps entries for 4 hours), so h2 couldn't reach srv3 until one ping from srv3 to
+      10.1.3.1 refreshed it. No configuration was changed.

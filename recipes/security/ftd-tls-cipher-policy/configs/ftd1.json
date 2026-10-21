@@ -1,0 +1,21 @@
+{
+    "EULA": "accept",
+    "Hostname": "ftd1",
+    "AdminPassword": "{{ inputs.admin_password }}",
+    "FirewallMode": "routed",
+    "DNS1": "{{ inputs.mgmt_dns }}",
+    "DNS2": "",
+    "DNS3": "",
+    "IPv4Mode": "manual",
+    "IPv4Addr": "{{ inputs.ftd1_mgmt_ip }}",
+    "IPv4Mask": "{{ inputs.mgmt_mask }}",
+    "IPv4Gw": "{{ inputs.mgmt_gateway }}",
+    "IPv6Mode": "disabled",
+    "IPv6Addr": "",
+    "IPv6Mask": "",
+    "IPv6Gw": "",
+    "FmcIp": "{{ inputs.fmc_ip }}",
+    "FmcRegKey": "cookbook",
+    "FmcNatId": "",
+    "ManageLocally": "No"
+}
