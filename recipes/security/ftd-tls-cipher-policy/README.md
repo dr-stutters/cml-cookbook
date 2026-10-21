@@ -21,7 +21,7 @@ h2 is the TLS client. srv3 runs six `openssl s_server` instances, each pinning o
 |---|---|
 | Does FTD log the TLS version and cipher? | Only once a decryption policy is linked to the access policy. A policy with no rules and the default action Do not decrypt is enough. Without one, the connection event has only `SSLServerName`. With one, every TLS event also carries `SSLVersion`, `SSLCipherSuite`, `SSLActualAction`, `SSLRuleName`, `SSLFlowStatus`, `SSLServerCertStatus` and `SSLCertificate`. Nothing is decrypted, and RC4 and 3DES sessions are logged as such. |
 | Can it block old versions and weak ciphers? | Yes, with Block with reset rules in the decryption policy: a Version condition (SSL 3.0, TLS 1.0, TLS 1.1) and a Cipher Suite condition. The cipher suite condition matches the suite the **server chose**, so a client that offered a strong suite first is still blocked when the server picks a weak one. Each blocked event names the rule. |
-| Can it step up a weak cipher? | Not as a feature. With Decrypt - Resign, FTD gave the client the same suite the server chose in every case this lab tried (the two legs never differed). It does remove suites it can't decrypt (RC4) from the ClientHello it forwards. When the client also offered something stronger, the server falls back to it: RC4 became ECDHE-RSA-AES128-GCM-SHA256 here. Suites FTD can decrypt (3DES, RSA-CBC) are left in and stay weak, so block them. An RC4-only client passes undecrypted unless Unsupported Cipher Suite is set to Block with reset. |
+| Can it step up a weak cipher? | Not as a feature. With Decrypt - Resign, FTD gave the client the same suite the server chose in every case this lab tried (the two legs never differed). It does remove suites it can't decrypt (RC4) from the ClientHello it forwards. When the client also offered something stronger, the server falls back to it: RC4 became ECDHE-RSA-AES128-GCM-SHA256 here. Suites FTD can decrypt (3DES, RSA-CBC) are left in and stay weak, so block them. An RC4-only client is reset by the cipher block rule or by the Unsupported Cipher Suite action (runs have logged both); with the resign rule above the block rules, only that action stops it, and at its default it lets RC4 through undecrypted. |
 | Does rule order matter? | Yes. A Decrypt - Resign rule above the cipher block rule lets decryptable weak suites through, decrypted. Put the block rules first. With the resign rule below them, RC4 is still stepped up. |
 
 ## Topology
@@ -89,7 +89,7 @@ Then follow the steps in [`recipe.yaml`](recipe.yaml) in order. Run `tls-matrix`
 | `h2-weak-ciphers-blocked` | Weak suites are reset, including when the server picked one over a strong offer |
 | `h2-strong-allowed` | TLS 1.3 and TLS 1.2 ECDHE-GCM still pass |
 | `h2-rc4-stepped-up` | Decrypt - Resign turns an RC4-preferring session into ECDHE-GCM on both legs |
-| `h2-only-rc4-blocked` | An RC4-only session is reset by the Unsupported Cipher Suite action |
+| `h2-only-rc4-blocked` | An RC4-only session is reset (by `block-weak-ciphers` or the Unsupported Cipher Suite action) |
 | `h2-3des-still-blocked` | A decryptable weak suite stays blocked with the resign rule below the block rules |
 
 The exact commands and expected output are in [`recipe.yaml`](recipe.yaml).
@@ -97,6 +97,6 @@ The exact commands and expected output are in [`recipe.yaml`](recipe.yaml).
 ## Things to try
 
 - Move `resign-stepup` above the block rules, deploy and run `tls-matrix`: pref-weak, pref-3des and only-3des now pass, decrypted.
-- Set Unsupported Cipher Suite back to "Inherit default action" and watch `only-rc4` pass undecrypted with RC4 (`tls-events` shows flow status "Unsupported Cipher Suite").
+- Move `resign-stepup` above the block rules and set Unsupported Cipher Suite back to "Inherit default action": `only-rc4` now passes undecrypted with RC4 (`tls-events` shows flow status "Unsupported Cipher Suite").
 - `tls-events -v` prints every SSL field. Compare `SSLExpectedAction` with `SSLActualAction` on a session FTD wanted to decrypt but couldn't.
 - Capture `h2-ftd1` and `ftd1-srv3` while running `tls-matrix pref-rc4`, and compare the two ClientHellos. The lab infers the stripping from srv3's choice; a capture shows it directly (not yet done on a run).

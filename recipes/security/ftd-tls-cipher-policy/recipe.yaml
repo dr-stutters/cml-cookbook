@@ -250,8 +250,11 @@ steps:
           FTD never negotiates a stronger suite on its own: the client leg always gets the
           suite the server chose.
         - only-rc4: with no other suite to fall back to, FTD forwards the ClientHello
-          unchanged, srv3 picks RC4 and the Unsupported Cipher Suite action resets it. Left at
-          its default (inherit the default action, Do not decrypt), RC4 would pass.
+          unchanged and srv3 picks RC4. The session is reset either way: runs have logged it
+          under block-weak-ciphers (RC4 is in tls-weak-ciphers) and under resign-stepup with
+          flow status "Unsupported Cipher Suite" (the Unsupported Cipher Suite action). With
+          resign-stepup above the block rules, only that action stands between RC4 and the
+          server: left at its default (inherit the default action, Do not decrypt), RC4 passes.
       Order matters: with resign-stepup ABOVE the block rules, the decryptable weak suites are
       decrypted and allowed instead of blocked.
     verify: [h2-rc4-stepped-up, h2-only-rc4-blocked, h2-3des-still-blocked]
@@ -336,7 +339,7 @@ checks:
       pattern: 'pref-rc4\s+12443\s+ok\s+TLSv1\.2\s+TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256\s+TLSv1\.2\s+TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256\s+tls-cipher-resign-ca'
   - id: h2-only-rc4-blocked
     type: cli_match
-    description: An RC4-only session (no suite to fall back to) is reset by the Unsupported Cipher Suite action
+    description: An RC4-only session (no suite to fall back to) is reset, by block-weak-ciphers or the Unsupported Cipher Suite action
     node: h2
     command: tls-matrix only-rc4
     expect:
