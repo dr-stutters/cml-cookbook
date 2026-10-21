@@ -99,7 +99,7 @@ inputs:
 | `type` | `string`, `integer`, `ipv4`, `ipv4_prefix`, `ipv6` or `secret`. |
 | `required` | Defaults to `true`. |
 | `default` | Optional. Not allowed on `secret` inputs. |
-| `example` | Shown to the user when asking for a value. Use documentation addresses (`192.0.2.0/24`). |
+| `example` | Shown to the user when asking for a value. Use documentation addresses (`192.0.2.0/24`), or `198.18.0.0/15` when the recipe shows a real lab's values (see [conventions](conventions.md#ipv4-addressing)). |
 
 Config files, inline configs and step commands refer to inputs as `{{ inputs.<name> }}`. `cookbook validate` fails on a placeholder that isn't declared and warns about an input that's never used. Agents must ask the user for required inputs, never invent them, and never echo `secret` values back.
 

@@ -14,8 +14,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Recipe format: optional `login` on a node (console credentials, may use an input). `cookbook render` writes it as the node's pyATS credentials.
 - `cookbook render` knows `ftdv`, `fmcv`, `external_connector` and `unmanaged_switch`.
 
+- Saved prompts in `prompts/`: `ftd-sdwan.md` (any tools) and `ftd-sdwan-mcp.md` (cml-mcp-server and fmc-mcp-server) build, check, drill or tear down the FTD SD-WAN recipes. They work as Claude Code slash commands or pasted into any agent. `prompts/README.md` explains how to use them.
+
 ### Changed
 
+- Conventions: input examples, docs and saved prompts may use `198.18.0.0/15` (RFC 2544) when they show a real lab's values, and a README may show a clearly labelled, made-up example for a secret input.
+- AGENTS.md: when the user runs a saved prompt, follow it too; the stricter rule wins.
 - AGENTS.md: agents whose tools can import CML topology YAML import the rendered lab file instead of building node by node.
 
 ### Fixed

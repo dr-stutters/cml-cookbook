@@ -68,6 +68,7 @@ The roadmap lives on GitHub: each phase is a [milestone](https://github.com/dr-s
 | [M2: Importable labs](https://github.com/dr-stutters/cml-cookbook/milestone/2) | `cookbook render`, and an importable lab file on every recipe release | [#3](https://github.com/dr-stutters/cml-cookbook/issues/3), [#4](https://github.com/dr-stutters/cml-cookbook/issues/4) |
 | [M3: Security recipes](https://github.com/dr-stutters/cml-cookbook/milestone/3) | `ftd-internet-edge` and `dot1x-access-ise`, the first recipes to use inputs, post-boot steps and systems outside CML | [#5](https://github.com/dr-stutters/cml-cookbook/issues/5), [#6](https://github.com/dr-stutters/cml-cookbook/issues/6) |
 | [M4: Self-checking labs](https://github.com/dr-stutters/cml-cookbook/milestone/4) | `cookbook check`, so anyone can verify a running lab without an AI agent | [#7](https://github.com/dr-stutters/cml-cookbook/issues/7) |
+| [M5: Firewall SD-WAN](https://github.com/dr-stutters/cml-cookbook/milestone/6) | `ftd-sdwan-single-hub`, `ftd-sdwan-dual-hub` and `ftd-sdwan-ha-hub` against an existing FMC, and saved prompts that build them | [#15](https://github.com/dr-stutters/cml-cookbook/issues/15)–[#18](https://github.com/dr-stutters/cml-cookbook/issues/18) |
 | [Backlog: more recipes](https://github.com/dr-stutters/cml-cookbook/milestone/5) | OSPFv3, multicast, VXLAN EVPN, and a format for break/fix labs | [#8](https://github.com/dr-stutters/cml-cookbook/issues/8)–[#11](https://github.com/dr-stutters/cml-cookbook/issues/11) |
 
 **Done so far**
