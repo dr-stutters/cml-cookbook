@@ -143,6 +143,21 @@ fmc_create_sdwan_topology(
   bgp_as=65000, community=1000, multipath=True)
 ```
 
+For `dual-hub`, the same steps with the `sdwan-dual-` names and four devices (hub1, hub2, spoke3,
+spoke4), and one SD-WAN call with a backup hub and multipath off:
+
+```
+fmc_create_sdwan_topology(
+  name='sdwan-dual', hub='sdwan-dual-hub1', hub_wan_interface='mpls',
+  hub_inside_interfaces=['inside'], tunnel_zone='sdwan-dual-overlay', spoke_pool='10.255.1.0/24',
+  backup_hub='sdwan-dual-hub2', backup_hub_wan_interface='mpls',
+  backup_hub_inside_interfaces=['inside'], backup_spoke_pool='10.255.2.0/24',
+  spokes=[
+    {'device': 'sdwan-dual-spoke3', 'wan_interface': 'mpls', 'inside_interfaces': ['inside']},
+    {'device': 'sdwan-dual-spoke4', 'wan_interface': 'mpls', 'inside_interfaces': ['inside']}],
+  bgp_as=65000, community=1000, multipath=False)
+```
+
 **Checks**
 
 - Run the CLI checks with `cml_run_commands` on the device consoles: `show managers`,
@@ -200,7 +215,9 @@ table of the drills and what you measured.
 ## 8. `teardown`
 
 Follow the recipe README's **Clean up** section in order, previewing each call and asking me
-first. For `single-hub`:
+first. When the lab is going too, unregistering the FTDs removes their interfaces and routes, so
+skip the deploys and hub-interface deletions below (the deploy in step 1, and step 2). For
+`single-hub`, the full route is:
 
 1. `fmc_delete_s2s_vpn('sdwan-single')` and `fmc_delete_s2s_vpn('sdwan-single-wan2')`, then
    `fmc_deploy(devices=[the four])`.

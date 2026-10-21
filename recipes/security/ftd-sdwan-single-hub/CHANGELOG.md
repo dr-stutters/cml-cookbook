@@ -2,6 +2,12 @@
 
 All notable changes to this recipe. Versions follow the cookbook's [versioning rules](../../../docs/versioning.md).
 
+## [1.0.1] - 2026-10-21
+
+### Changed
+
+- Clean up: when the lab is deleted too, unregistering the FTDs removes their interfaces and routes, so the intermediate deploys and hub interface deletions can be skipped (as run 2's teardown did). Over REST, delete devices one at a time: a delete can time out and still complete.
+
 ## [1.0.0] - 2026-10-21
 
 ### Changed
