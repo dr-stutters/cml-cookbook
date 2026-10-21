@@ -275,9 +275,10 @@ steps:
           Evaluation Mode) with Export-Controlled Features: Enabled. With the REST API:
           GET /api/fmc_platform/v1/license/smartlicenses returns regStatus REGISTERED and
           exportControl true.
-        - Which domain to use. FMC only registers devices in a leaf domain: if your FMC has
-          child domains (Global/<something>), pick one of them. Create everything in this recipe
-          (objects, policy, devices, topologies) in that one domain.
+        - Which domain to use: Global, unless your FMC has child domains (Global/<something>).
+          FMC only registers devices in a domain without children, so then pick one of those.
+          Create everything in this recipe (objects, policy, devices, topologies) in that one
+          domain.
         - Nothing named sdwan-single-* exists yet (devices, zones, objects, policies or VPN
           topologies). Everything this recipe creates in FMC starts with that prefix, so it never
           touches anything else.
@@ -311,8 +312,8 @@ steps:
         | sdwan-single-spoke4   | {{ inputs.spoke4_mgmt_ip }}   |
 
       Registration key cookbook, no NAT ID, access control policy sdwan-single-acp, performance
-      tier FTDv5, Essentials licence, in the domain you chose (FMC refuses "Device cannot be
-      registered to non-leaf domain" if it has children). Each registration and its first deployment take about 6
+      tier FTDv5, Essentials licence, in the domain you chose. If it has child domains, FMC
+      refuses with "Device cannot be registered to non-leaf domain". Each registration and its first deployment take about 6
       minutes. REST: POST devices/devicerecords.
     verify: [hub1-registered, spoke2-registered, spoke3-registered, spoke4-registered]
   - id: fmc-interfaces-routes

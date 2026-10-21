@@ -18,7 +18,7 @@ This recipe assumes you already have:
 - **The FMC registered to a Smart Account with Export-Controlled Features enabled.** FMC won't deploy the strong (AES) IPsec encryption the tunnels use without it, and evaluation mode doesn't count.
 - **The FTDv image in CML** (tested with 10.0.0, the same version as the FMC or older), and room for 11 licensed nodes. The four FTDv nodes take 8 GB of RAM each, about 37 GB for the whole lab.
 - **A management network** the external connector (System Bridge) reaches, with four free addresses and a route to the FMC.
-- **A leaf domain, if your FMC has domains.** FMC only registers devices in a domain with no children, so if yours has `Global/<something>` domains, do everything in one of them (the author's lab uses `Global/mcp-test-leaf`).
+- **One FMC domain for everything.** That's Global on most FMCs. Only if yours has child domains (`Global/<something>`) does it matter: FMC won't register devices in a domain with children, so do everything in one of the child domains (the author's lab uses `Global/mcp-test-leaf`).
 
 ## Topology
 
@@ -181,20 +181,23 @@ Your FMC outlives the lab, so remove what the recipe created before you delete t
 
 ## Drills
 
-Failover exercises for a finished build. The saved prompts' `drill` mode runs them. Do one at a time, and put the lab back the way it was after each one.
+Failover exercises for a finished build. The saved prompts' `drill` mode runs them. Do one at a time, and put the lab back the way it was after each one. The results below are from the first passing run (2026-10-21).
+
+One thing to know first: when CML takes a link down, FTDv keeps its port up/up. So an FTD finds out that a WAN is dead from IKE and BGP timing out, not from the interface going down.
 
 1. **WAN failover on spoke2.**
-   - On h9, run `ping 172.16.1.8 repeat 300 timeout 1`.
+   - On h9, run `ping -c 60 172.16.1.8`.
    - While it runs, take the link spoke2 GigabitEthernet0/0 ↔ isp5 Ethernet0/2 down in CML.
-   - Count the lost pings. Expect a gap of 25 seconds or less, and none at all when the pings were already hashed onto the inet tunnel.
-   - spoke2's `show bgp summary` loses 10.255.1.1 and keeps 10.255.2.1.
-   - Bring the link back up. `spoke2-bgp` passes again within a minute or two.
+   - Count the lost pings. With multipath on, each flow is hashed onto one tunnel: a flow already on inet loses nothing. A flow on mpls stalls until spoke2 drops the dead tunnel.
+   - In our run, h9's pings were on inet and lost none. spoke2 dropped the mpls tunnel and its BGP session to 10.255.1.1 about 2 minutes after the link went down, and kept 10.255.2.1.
+   - Bring the link back up. The mpls BGP session returned within 46 seconds, and `spoke2-bgp` passed again.
 2. **No backup on spoke4.**
-   - Take spoke4 GigabitEthernet0/0 ↔ isp5 Ethernet1/0 down. h11 loses every other site (`ping-h11-h8` fails), because spoke4 has only one tunnel.
-   - Bring the link back up, and time how long `ping-h11-h8` takes to pass again.
+   - Take spoke4 GigabitEthernet0/0 ↔ isp5 Ethernet1/0 down. h11 loses every other site (`ping-h11-h8` fails, 10 of 10 lost), because spoke4 has only one tunnel.
+   - Bring the link back up, and time how long `ping-h11-h8` takes to pass again: 53 seconds in our run.
 3. **Brownout on spoke2's mpls link.**
-   - Add 300 ms of latency and 30% loss to spoke2 ↔ isp5 with CML's link conditioning.
-   - Ping h9 to h8 again. The tunnel stays up and BGP keeps using it, so the traffic suffers.
+   - Apply CML's `brownout` link scenario to spoke2 ↔ isp5: 150 ms each way with 50 ms of jitter, and 20% loss each way (about 36% round trip).
+   - On spoke2, `ping 10.5.1.1` crosses the degraded mpls underlay (about 300 ms, some loss), while `ping 10.6.1.1` over inet stays at 1 ms.
+   - The tunnel and its BGP session stay up, so BGP keeps sending some flows over mpls, and those suffer. In our run h9's flows to every site happened to be on inet and stayed clean.
    - This is the problem path monitoring and app-aware routing solve (see below). FMC's path metrics (Overview > SD-WAN Summary) show it about 5 minutes later.
    - Remove the conditioning.
 

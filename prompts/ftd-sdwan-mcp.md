@@ -83,8 +83,14 @@ own configuration, so you never need them.
 
 - `fmc_status`: the FMC version is 7.6 or later.
 - `fmc_license_status(check_policies=false)`: `regStatus` REGISTERED and `exportControl` true.
-- `fmc_list_devices(name=<prefix>)` and `fmc_list_objects` / `fmc_find_object` for the prefix:
-  expect nothing. If something exists, a previous build wasn't torn down: stop and ask.
+- Nothing with the prefix exists yet:
+  - `fmc_list_devices(name=<prefix>)`;
+  - `fmc_list_objects(type='network' and type='security_zone', name_or_value=<prefix>)`;
+  - `fmc_list_policies(kind='access' and kind='site_to_site_vpn', name=<prefix>)`;
+  - `fmc_api_call(GET, 'object/ipv4addresspools')`.
+
+  (`fmc_find_object` reads a hyphenated name as a port range, so don't use it for this.) If
+  anything exists, a previous build wasn't torn down: stop and ask.
 - The management addresses: none of them should answer a ping or appear in `fmc_list_devices`.
 - `cml_list_node_definitions`: `ftdv` and `iol-xe` exist.
 
@@ -183,7 +189,9 @@ Run the exercises in the recipe README's **Drills** section, one at a time, with
 
 - pull a link: `cml_set_link_state(lab, link='spoke2<->isp5', state='down')`, then `up` again;
 - degrade a link: `cml_apply_link_scenario`, for example `brownout`, then `cml_clear_link_scenarios`;
-- measure: `cml_run_commands` on the hosts (for example `ping 172.16.1.8 repeat 200 timeout 1`);
+- measure: `cml_run_commands` on the Alpine hosts (`ping -c 60 172.16.1.8`), run in parallel with
+  the link change. When CML takes a link down, FTDv keeps its port up, so the FTD notices a dead
+  WAN only when IKE and BGP time out (about 2 minutes);
 - FMC's view: `fmc_sdwan_status`. Its path metrics lag by about 5 minutes.
 
 Put the lab back exactly as it was after each drill and re-run the affected checks. Finish with a
@@ -206,8 +214,8 @@ first. For `single-hub`:
    three zones (`type='security_zone'`).
 6. `cml_stop_lab`, then `cml_delete_lab`.
 
-Finish by confirming that `fmc_list_devices` and `fmc_find_object` show nothing with the prefix,
-and that `fmc_get_vpn_topology('sdwan-single')` is gone.
+Finish by running the preflight's prefix checks again (devices, networks, zones, access and VPN
+policies, address pools): all of them must come back empty.
 
 ## 9. FMC 10.0.1 quirks seen while proving these recipes
 
@@ -224,3 +232,6 @@ and that `fmc_get_vpn_topology('sdwan-single')` is gone.
   `show path-monitoring`. `cml_run_commands` runs them on the console.
 - With two hubs, pass `multipath=False` when the DC LAN routes back through one hub.
 - Before `fmc_create_ha_pair`, deploy both units: FMC refuses to pair "dirty" peers.
+- FMC rate-limits its API (about 110 requests a minute). A burst of calls can get a 429, which
+  changes nothing: wait a minute, then preview and confirm that call again. On one device, run
+  writes one at a time: a confirm token is refused once anything it covers has changed.
