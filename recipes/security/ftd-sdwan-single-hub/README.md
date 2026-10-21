@@ -171,13 +171,14 @@ The exact commands and expected output are in [`recipe.yaml`](recipe.yaml). Ever
 
 ## Clean up
 
-Your FMC outlives the lab, so remove what the recipe created before you delete the lab, or the next build will collide with it. The saved prompts' `teardown` mode does this for you. By hand, in this order:
+Your FMC outlives the lab, so remove what the recipe created, or the next build will collide with it. The saved prompts' `teardown` mode does this for you. If you're deleting the lab as well:
 
-1. Delete the SD-WAN topologies `sdwan-single` and `sdwan-single-wan2`, and deploy to the four devices.
-2. On hub1, delete the interfaces `sdwan-dvti`, `sdwan-dvti-wan2`, `sdwan-dvti-lo` and `sdwan-dvti-wan2-lo`, and deploy. Then delete the pools `sdwan-single-pool` and `sdwan-single-wan2-pool` (Objects > Address Pools).
-3. Delete the four devices from FMC (Devices > Device Management).
-4. Delete the access control policy `sdwan-single-acp`, the three network objects and the three zones.
-5. Stop and delete the lab in CML.
+1. Delete the SD-WAN topologies `sdwan-single` and `sdwan-single-wan2`.
+2. Delete the four devices from FMC (Devices > Device Management). That removes their interfaces, tunnel interfaces, loopbacks and routes with them, so there's nothing to deploy. Over REST, do one device at a time: a delete can time out and still complete, so list the devices again before retrying.
+3. Delete the pools `sdwan-single-pool` and `sdwan-single-wan2-pool` (Objects > Address Pools), the access control policy `sdwan-single-acp`, the three network objects and the three zones.
+4. Stop and delete the lab in CML.
+
+If you keep the FTDs, delete the topologies and deploy, then delete hub1's `sdwan-dvti`, `sdwan-dvti-wan2`, `sdwan-dvti-lo` and `sdwan-dvti-wan2-lo` and deploy again, before deleting the pools. Run 1's teardown took that longer route; run 2's took the short one.
 
 ## Drills
 

@@ -1,7 +1,7 @@
 schema_version: 1
 id: ftd-sdwan-single-hub
 title: FTD SD-WAN with one hub
-version: 1.0.0
+version: 1.0.1
 status: stable
 summary: >-
   Secure Firewall SD-WAN with one hub and three spokes on FTDv, managed by an FMC you already
