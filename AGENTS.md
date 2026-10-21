@@ -11,6 +11,8 @@ The recipe's `recipe.yaml` is the source of truth. Its README explains the lab t
 
 These instructions don't assume a particular tool. Use whatever you have that can drive CML: an MCP server for CML, the `virl2_client` Python library, or CML's REST API directly.
 
+If the user ran a saved prompt from [`prompts/`](prompts/), follow it as well: it supplies their environment's values and adds rules (which FMC objects you may touch, when to ask) on top of these instructions. Where the two disagree, the stricter rule wins.
+
 ### 1. Find the recipe
 
 - [`index.yaml`](index.yaml) lists every recipe with its path, version, status, size, images and inputs.

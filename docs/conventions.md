@@ -54,7 +54,7 @@ Numbers start at 1. The number is what the addressing plan uses, so keep numbers
 | LAN and user segments | `172.16.V.0/24` | V is the VLAN ID (or the node number for a routed LAN). Gateway `.1`, HSRP/VRRP physical addresses `.2` and `.3`. |
 | In-lab management | `10.254.0.0/24` | `10.254.0.N` on node N |
 | Simulated internet | `198.51.100.0/24`, `203.0.113.0/24` | Documentation ranges ([RFC 5737](https://www.rfc-editor.org/rfc/rfc5737)) |
-| Examples of external addresses | `192.0.2.0/24` | Only in `inputs` examples and docs |
+| Examples of external addresses | `192.0.2.0/24`, or `198.18.0.0/15` | Only in `inputs` examples, docs and saved prompts. `198.18.0.0/15` is the benchmarking range ([RFC 2544](https://www.rfc-editor.org/rfc/rfc2544)) and never routes on the internet. Use it when a recipe shows a real lab's values, and say so at the top of the README. |
 
 Point-to-point links use `/24` because `10.1.2.1` and `10.1.2.2` are easier to read in `show` output than a `/31` would be. Labs aren't short of address space.
 
@@ -94,6 +94,8 @@ Every node uses the same **lab-only** credentials:
 These are public and deliberately weak. A recipe that bridges into a real network through an external connector must say so at the top of its README and must never be exposed to an untrusted network.
 
 Appliances that enforce strong passwords, such as FTDv and FMCv, take theirs from a `secret` input named `admin_password` instead, and the node's `login` says so. Never put a fixed password for a box that sits on a bridged network in a public recipe.
+
+A README or saved prompt may show a made-up example for a secret input (`Sdwan#Lab-2026`) so people can see the format, as long as it's clearly labelled as an example and the recipe's configs still read the input.
 
 ## Day-0 configs
 
