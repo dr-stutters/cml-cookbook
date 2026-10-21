@@ -14,7 +14,10 @@ Build, check, drill or tear down one of the FTD SD-WAN recipes from
 https://github.com/dr-stutters/cml-cookbook in my CML, configured by my existing FMC, using two
 MCP servers:
 
-- [cml-mcp-server](https://github.com/dr-stutters/cml-mcp-server) v0.11.0-rc2 or later, for CML;
+- [cml-mcp-server](https://github.com/dr-stutters/cml-mcp-server) v0.11.0 or later, for CML. Until
+  0.11.0 is released, use a build of its `main` branch from 2026-10-21 or later. It holds the FTDs'
+  admin password as `LAB_FTD_ADMIN_PASSWORD` (an environment variable, or in the file named by
+  `CML_LAB_SECRETS_FILE`) and fills it in when it imports the lab;
 - [fmc-mcp-server](https://github.com/dr-stutters/fmc-mcp-server) v0.14.2 or later, for FMC.
 
 Both need `MCP_ENABLE_WRITES=true` and `MCP_ENABLE_DANGEROUS=true`: importing labs, registering
@@ -51,9 +54,11 @@ you start.
 These map onto the recipe's inputs: `fmc_ip`, `mgmt_mask`, `mgmt_gateway`, `mgmt_dns` and one
 `<node>_mgmt_ip` per FTD.
 
-**Ask me for the FTDs' `admin_password` when you need it** (example format, made up:
-`Sdwan#Lab-2026`). Never echo, log or save it. The FMC and CML logins live in the MCP servers'
-own configuration, so you never need them.
+**Don't ask me for the FTDs' `admin_password`.** cml-mcp-server holds it as
+`LAB_FTD_ADMIN_PASSWORD`. You render the lab with the placeholder `${LAB_FTD_ADMIN_PASSWORD}`, and the
+server fills in the real value when it imports the lab (section 4). If I give you the password anyway,
+never echo, log or save it. The FMC and CML logins live in the MCP servers' own configuration too, so
+you never need them.
 
 ## 3. Ground rules
 
@@ -96,19 +101,20 @@ own configuration, so you never need them.
 
 **Build the lab**
 
-1. Render it with the cookbook CLI:
+1. Render it with the cookbook CLI. Pass the placeholder as the admin password, in single quotes so
+   the shell leaves it alone. The file then holds no secret:
    - `pip install "cml-cookbook @ git+https://github.com/dr-stutters/cml-cookbook"`
-   - `cookbook render <recipe id> -o lab.yaml --input name=value ...`
-2. Import the file. The file contains the FTD admin password, and `cml_import_lab` would carry the
-   whole file in its arguments, where most agents show it on screen.
-   - If you have a shell, import it with CML's REST API instead: `POST /api/v0/authenticate`, then
-     `POST /api/v0/import?title=<lab title>` with the file as the body. Don't print the file or the
-     request.
-   - Otherwise, ask me to import it in the CML web UI (Dashboard → Import).
-   - You can still preview it first: run `cml_import_lab` without `confirm` on a copy with the
-     password replaced.
+   - `cookbook render <recipe id> -o lab.yaml --input admin_password='${LAB_FTD_ADMIN_PASSWORD}' --input name=value ...`
+2. Import it with `cml_import_lab(topology_yaml=<the file's contents>)`. cml-mcp-server fills in the
+   password on its side, only in what it sends to CML, so neither the call nor the preview contains it.
+   Before you show me the preview, check it:
+   - `lab_secrets` must list `LAB_FTD_ADMIN_PASSWORD` with every FTD in the lab. If `lab_secrets` is
+     missing, the server is too old: it would import the placeholder itself as the password. Stop and
+     tell me.
+   - If the preview is blocked because the server has no `LAB_FTD_ADMIN_PASSWORD`, stop and ask me to
+     set it on the server. Don't ask me for the password itself.
 
-   Delete the file once it's imported. Then use `cml_list_labs` to find the new lab.
+   Confirm once I approve. Then use `cml_list_labs` to find the new lab.
 3. `cml_plan_licences(target=<the new lab>)`. If something has to stop to make room, ask me which.
 4. `cml_start_lab(lab, wait=false)`, then `cml_wait_for_converged(lab)`. FTDv takes 15–30 minutes.
 5. Poll `cml_run_commands(nodes=[the FTDs], commands=['show managers'])` until every FTD lists the

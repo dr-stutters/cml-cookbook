@@ -5,14 +5,14 @@ A saved prompt is a ready-made instruction you keep and run again whenever you n
 | Prompt | Recipes | Tools it expects |
 |---|---|---|
 | [`ftd-sdwan.md`](ftd-sdwan.md) | `ftd-sdwan-single-hub`, `ftd-sdwan-dual-hub`, `ftd-sdwan-ha-hub` | Anything that can drive CML, plus FMC's REST API or you clicking through FMC |
-| [`ftd-sdwan-mcp.md`](ftd-sdwan-mcp.md) | The same | [cml-mcp-server](https://github.com/dr-stutters/cml-mcp-server) v0.11.0-rc2 or later and [fmc-mcp-server](https://github.com/dr-stutters/fmc-mcp-server) v0.14.2 or later, with writes and the dangerous tier on |
+| [`ftd-sdwan-mcp.md`](ftd-sdwan-mcp.md) | The same | [cml-mcp-server](https://github.com/dr-stutters/cml-mcp-server) v0.11.0 or later (it holds the FTD admin password as `LAB_FTD_ADMIN_PASSWORD`) and [fmc-mcp-server](https://github.com/dr-stutters/fmc-mcp-server) v0.14.2 or later, with writes and the dangerous tier on |
 
 Both build the same lab and run the same checks. The MCP one maps every step to a tool call: one call to `fmc_create_sdwan_topology` builds the whole SD-WAN overlay. It also offers an OSPF overlay variant.
 
 ## Before you use one
 
 1. **Replace the lab values.** Each prompt has a "My lab values" table near the top. The values in it (198.18.x.x addresses, an FMC at 198.18.134.76) come from the author's lab. Edit them to match yours.
-2. **Don't save passwords in the file.** The agent asks for them when it needs them. The example passwords in the prompts and READMEs are made up, so never use them on a real device.
+2. **Don't save passwords in the file.** The agent asks for them when it needs them. With `ftd-sdwan-mcp.md`, cml-mcp-server holds the FTD admin password and fills it in when it imports the lab, so the agent never asks for it or sees it. The example passwords in the prompts and READMEs are made up, so never use them on a real device.
 3. **Check what the recipe assumes.** The FTD SD-WAN recipes need an FMC that already exists, runs 7.6 or later, and is registered to a Smart Account with Export-Controlled Features enabled. The labs don't include an FMC.
 
 ## Using one in Claude Code

@@ -22,6 +22,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Conventions: input examples, docs and saved prompts may use `198.18.0.0/15` (RFC 2544) when they show a real lab's values, and a README may show a clearly labelled, made-up example for a secret input.
 - AGENTS.md: when the user runs a saved prompt, follow it too; the stricter rule wins.
 - AGENTS.md: agents whose tools can import CML topology YAML import the rendered lab file instead of building node by node.
+- `prompts/ftd-sdwan-mcp.md`: render the lab with `--input admin_password='${LAB_FTD_ADMIN_PASSWORD}'` and import it with `cml_import_lab`. cml-mcp-server v0.11.0 fills in the password on the server ([cml-mcp-server#40](https://github.com/dr-stutters/cml-mcp-server/pull/40)), so the agent never asks for it or sees it. The prompt has the agent check the preview's `lab_secrets` before it confirms. This replaces the workaround of importing through CML's REST API or web UI.
 
 ### Fixed
 
