@@ -13,7 +13,7 @@ maintainers: [dr-stutters]
 
 requirements:
   cml_min_version: "2.7"
-  # ram_mb: fill in after a real run has measured it
+  ram_mb: 37376
   images:
     - node_definition: ftdv
       refplat: false
@@ -548,4 +548,24 @@ checks:
     node: h9
     target: 172.16.4.10
 
-tested_on: []
+tested_on:
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-21"
+    result: pass
+    by: dr-stutters
+    images:
+      ftdv: ftdv-10-0-0
+      iol-xe: iol-xe-17-18-02
+      alpine: alpine-base-3-23-3
+    notes: >-
+      FMC 10.0.1 (registered Smart Account, export control on), domain Global/mcp-test-leaf.
+      Followed prompts/ftd-sdwan-mcp.md with fmc-mcp-server 0.15.0 and cml-mcp-server 0.11.0;
+      every FMC and CML write was previewed. One fmc_create_sdwan_topology call built both hubs'
+      DVTIs and pools and the iBGP overlay with multipath off. All 19 checks passed: two IKEv2 SAs
+      on each hub, both spokes peering with both hubs, spoke3 and spoke4 routing the DC LAN
+      through 10.255.1.1 only, and every host pair 5/5. Both drills ran: with hub1's links down
+      and h8 pointed at hub2 the spokes moved to 10.255.2.1 in about 20 seconds (19 of 150 pings
+      lost); restoring h8's route before hub1's BGP sessions returned lost every ping for about
+      90 seconds, so the README now says to wait for them. A hub2 failure lost nothing, and the
+      spokes dropped the hub2 session after about 2 minutes. Built and checked by Claude Code.

@@ -189,12 +189,12 @@ Failover exercises for a finished build. The saved prompts' `drill` mode runs th
 1. **Primary hub failure.**
    - On h9, run `ping -c 120 172.16.1.8`.
    - While it runs, take hub1's links down in CML: hub1 GigabitEthernet0/0 ↔ isp5 (its tunnels) and hub1 GigabitEthernet0/3 ↔ ums2 (the DC LAN).
-   - On h8, point the default route at the backup hub: `ip route replace default via 172.16.1.2`. A real DC would use a first-hop redundancy protocol or routing for this.
-   - Watch spoke3's `show route 172.16.1.0` move to 10.255.2.1, and count the lost pings while it does.
-   - Put it back: bring both links up, then `ip route replace default via 172.16.1.1` on h8. The spokes move back to hub1 once its BGP sessions return, and `spoke3-prefers-hub1` passes again.
+   - On h8, point the default route at the backup hub: `sudo ip route replace default via 172.16.1.2`. A real DC would use a first-hop redundancy protocol or routing for this.
+   - Watch spoke3's `show route 172.16.1.0` move to 10.255.2.1, and count the lost pings while it does. In the test run it took about 20 seconds (19 pings lost): traffic was flowing, so dead peer detection tore down the hub1 tunnel quickly, and the hub1 BGP session went with it.
+   - Put it back: bring both links up and wait until spoke3's `show bgp summary` shows a prefix count for 10.255.1.1 again (about 90 seconds in the test run). Only then run `sudo ip route replace default via 172.16.1.1` on h8. If you switch h8 back first, its replies go to hub1 before hub1 has any tunnels, and every ping is lost until the spokes reconnect. The spokes move back to hub1 as soon as its BGP sessions return, and `spoke3-prefers-hub1` passes again.
 2. **Backup hub failure.**
-   - Take hub2 GigabitEthernet0/0 ↔ isp5 down. Traffic keeps flowing through hub1 with no loss, and the spokes drop their hub2 session after IKE and BGP time out.
-   - Bring it back up. `spoke3-bgp` passes again once the session returns.
+   - Take hub2 GigabitEthernet0/0 ↔ isp5 down. Traffic keeps flowing through hub1 with no loss. The spokes keep their hub2 session for about 2 minutes (nothing flows over that tunnel to trigger dead peer detection), then drop it when IKE and BGP time out.
+   - Bring it back up. `spoke3-bgp` passes again once the session returns, after about a minute and a half.
 
 ## Things to try
 

@@ -204,9 +204,14 @@ Run the exercises in the recipe README's **Drills** section, one at a time, with
 
 - pull a link: `cml_set_link_state(lab, link='spoke2<->isp5', state='down')`, then `up` again;
 - degrade a link: `cml_apply_link_scenario`, for example `brownout`, then `cml_clear_link_scenarios`;
-- measure: `cml_run_commands` on the Alpine hosts (`ping -c 60 172.16.1.8`), run in parallel with
-  the link change. When CML takes a link down, FTDv keeps its port up, so the FTD notices a dead
-  WAN only when IKE and BGP time out (about 2 minutes);
+- change a host: `cml_configure_node(lab, node='h8', mode='exec', lines=['sudo ip route replace
+  default via 172.16.1.2'])` (the Alpine hosts log in as `cisco`, so routes need `sudo`);
+- measure: `cml_run_commands` on the Alpine hosts (`ping -c 120 -q 172.16.1.8`). Calls run one at a
+  time, so a ping sent alongside a link change finishes before the link moves: change the link
+  first, then ping, and read the failover time from the loss count and `show route`'s age. When
+  CML takes a link down, FTDv keeps its port up, so the FTD notices a dead path only through IKE
+  and BGP: about 20 seconds when traffic is flowing (dead peer detection), about 2 minutes on an
+  idle tunnel;
 - FMC's view: `fmc_sdwan_status`. Its path metrics lag by about 5 minutes.
 
 Put the lab back exactly as it was after each drill and re-run the affected checks. Finish with a
