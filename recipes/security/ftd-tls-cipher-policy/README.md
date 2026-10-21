@@ -75,7 +75,7 @@ ftd1 registers itself to your FMC at day 0. h2 and srv3 configure themselves and
 
 Then follow the steps in [`recipe.yaml`](recipe.yaml) in order. Run `tls-matrix` on h2 and `tls-events` on srv3 after each deploy.
 
-**Rebuilding h2 or srv3 while ftd1 keeps running:** CML gives a wiped node new MAC addresses, and ftd1 keeps its old ARP entry for up to 4 hours, so traffic to that host times out. Ping ftd1 from the rebuilt host (`ping -c 2 10.1.3.1` on srv3, `ping -c 2 10.1.2.1` on h2) and ftd1 relearns its address.
+**Rebuilding h2 or srv3 while ftd1 keeps running:** a wiped node comes back with new MAC addresses, so each host pings ftd1 once at boot and ftd1 replaces its old ARP entry straight away.
 
 ## Checks
 

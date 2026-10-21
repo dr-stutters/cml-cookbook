@@ -383,3 +383,19 @@ tested_on:
       gave the rebuilt srv3 new MAC addresses and ftd1 still had the old one in its ARP cache
       (FTD keeps entries for 4 hours), so h2 couldn't reach srv3 until one ping from srv3 to
       10.1.3.1 refreshed it. No configuration was changed.
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-21"
+    result: pass
+    by: dr-stutters
+    images:
+      ftdv: ftdv-10-0-0
+      alpine: alpine-base-3-23-3
+    notes: >-
+      Rebuild of srv3 alone with the boot-time ping to ftd1: srv3 wiped and booted from
+      configs/srv3.cfg as committed, while h2, ftd1 and the FMC side (FMC 10.0.1) kept running
+      in the state the last step leaves them. CML gave srv3 a new eth0 MAC, and ftd1's ARP
+      entry for 10.1.3.3 already held it 21 seconds after boot. With no manual ping, h2 reached
+      srv3 at the first try, srv3 reported "setup: ready" with no console errors, and all 12
+      checks passed. h2 wasn't rebuilt, so its identical boot-time ping to 10.1.2.1 wasn't
+      exercised in this run.
