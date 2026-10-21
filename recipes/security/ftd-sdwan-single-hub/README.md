@@ -1,6 +1,6 @@
 # FTD SD-WAN with one hub
 
-> **Status: draft.** Passed all of its checks once on CML 2.10.0 with FMC 10.0.1 and FTDv 10.0.0 (2026-10-21), and needs a second passing run before it's marked stable. Please [report anything that doesn't work](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
+> **Status: stable.** Passed all 22 checks twice on CML 2.10.0 with FMC 10.0.1 and FTDv 10.0.0 (2026-10-21): once built with the MCP servers, once with FMC's REST API only. Please [report anything that doesn't work](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
 
 > **The example values come from the author's lab.** The 198.18.x.x addresses (FMC, management network, FTD management ports) and every password shown on this page are examples from the author's lab or made up for the docs. Replace them with your own. In particular, never use an example password on a real device.
 

@@ -1,8 +1,8 @@
 schema_version: 1
 id: ftd-sdwan-single-hub
 title: FTD SD-WAN with one hub
-version: 0.1.0
-status: draft
+version: 1.0.0
+status: stable
 summary: >-
   Secure Firewall SD-WAN with one hub and three spokes on FTDv, managed by an FMC you already
   have: three simulated carriers, a hub-and-spoke IPsec overlay over virtual tunnel interfaces with
@@ -274,7 +274,7 @@ steps:
         - System > Licenses > Smart Licenses shows the FMC registered to a Smart Account (not
           Evaluation Mode) with Export-Controlled Features: Enabled. With the REST API:
           GET /api/fmc_platform/v1/license/smartlicenses returns regStatus REGISTERED and
-          exportControl true.
+          metadata.exportControl true.
         - Which domain to use: Global, unless your FMC has child domains (Global/<something>).
           FMC only registers devices in a domain without children, so then pick one of those.
           Create everything in this recipe (objects, policy, devices, topologies) in that one
@@ -314,7 +314,9 @@ steps:
       Registration key cookbook, no NAT ID, access control policy sdwan-single-acp, performance
       tier FTDv5, Essentials licence, in the domain you chose. If it has child domains, FMC
       refuses with "Device cannot be registered to non-leaf domain". Each registration and its first deployment take about 6
-      minutes. REST: POST devices/devicerecords.
+      minutes. REST: POST devices/devicerecords (name, hostName, regKey, license_caps
+      [ESSENTIALS], performanceTier FTDv5, accessPolicy). It returns at once with a task id:
+      poll job/taskstatuses/{id}, or the hubN/spokeN-registered checks.
     verify: [hub1-registered, spoke2-registered, spoke3-registered, spoke4-registered]
   - id: fmc-interfaces-routes
     title: Configure the WAN and inside interfaces and a static route per carrier
@@ -348,7 +350,11 @@ steps:
     instructions: |
       Deploy to the four sdwan-single-* devices (Deploy > Deployment) and wait until it succeeds.
       If FMC refuses with "another deployment in progress", the deployment it started after
-      registration hasn't finished yet: wait a minute and try again.
+      registration hasn't finished yet: wait a minute and try again. REST: POST
+      deployment/deploymentrequests with the version from GET deployment/deployabledevices and
+      the four device ids, then poll job/taskstatuses/{task id}. This first full deploy of new
+      devices warns "The changes to Virtual Routers may cause traffic disruption" (the web UI
+      shows it with a Proceed button), so the REST request needs ignoreWarning true.
     verify: [hub1-interfaces, spoke2-interfaces, spoke3-interfaces, spoke4-interfaces,
              spoke2-underlay-mpls, spoke2-underlay-inet, spoke2-underlay-lte]
   - id: fmc-sdwan-topology
@@ -366,14 +372,31 @@ steps:
         - Authentication: automatic pre-shared key. IKEv2 with FMC's default AES policies.
         - Routing: BGP on, AS 65000, community 1000, ECMP (multipath) on, redistributing the
           connected inside interfaces (hub1 and every spoke: inside).
-      REST: POST policy/ftds2svpns with topologyType AUTO_VPN, routeBased true, ikeV2Enabled
-      true and autoVpnSettings {routeSettings {enableBgp, autonomousSystemNumber 65000,
-      communityAttribute 1000, communityTagToAdvertiseLearntRoutes 1000, enableMultiPath true,
-      distributeConnectedNetwork {enableDistribution true, interfaceSelection INSIDE_INTERFACE}},
-      spokeSvtiSecurityZone}. Use AUTO_VPN: FMC 10.0.1 silently drops autoVpnSettings with
-      HUB_AND_SPOKE. Then POST .../endpoints once per device: peerType HUB with the DVTI as its
-      interface and ipv4PoolsForSpokeVti, peerType SPOKE with the WAN interface; both with
-      insideInterface. Create the pool (object/ipv4addresspools), loopback and DVTI first.
+      REST, in this order (paths under /api/fmc_config/v1/domain/{domainUUID}/):
+        1. POST object/ipv4addresspools: ipAddressRange 10.255.1.2-10.255.1.254, mask
+           255.255.255.0.
+        2. POST devices/devicerecords/{hub1}/loopbackinterfaces: loopbackId 1, ifname
+           sdwan-dvti-lo, enabled, ipv4 static 10.255.1.1 / 255.255.255.255.
+        3. POST devices/devicerecords/{hub1}/virtualtunnelinterfaces: tunnelType DYNAMIC,
+           tunnelId 1, ifname sdwan-dvti, enabled, tunnelSource (hub1's Ethernet0/0),
+           securityZone sdwan-single-overlay, ipsecMode ipv4, ipAddressAssignmentType
+           BORROW_IP_FROM_INTERFACE, borrowIPfrom (the loopback).
+        4. POST policy/ftds2svpns: name, topologyType AUTO_VPN, routeBased true, ikeV1Enabled
+           false, ikeV2Enabled true, autoVpnSettings {routeSettings {enableBgp true,
+           autonomousSystemNumber 65000, communityAttribute 1000,
+           communityTagToAdvertiseLearntRoutes 1000, enableMultiPath true,
+           distributeConnectedNetwork {enableDistribution true, interfaceSelection
+           INSIDE_INTERFACE}}, spokeSvtiSecurityZone (sdwan-single-overlay)}. Use AUTO_VPN:
+           FMC 10.0.1 silently drops autoVpnSettings with HUB_AND_SPOKE.
+        5. GET .../ftds2svpns/{id}/ikesettings: ikeV2Settings should be authenticationType
+           AUTOMATIC_PRE_SHARED_KEY with policies [AES-GCM-NULL-SHA-LATEST]. On FMC 10.0.1
+           with export control that's the default; PUT it back with those values if not.
+        6. GET .../ftds2svpns/{id}/ipsecsettings: ikeV2IpsecProposal should be [AES-GCM]
+           (also the default); PUT it back if not.
+        7. POST .../ftds2svpns/{id}/endpoints once per device, all with extranet false,
+           connectionType BIDIRECTIONAL and insideInterface [inside]: hub1 with peerType HUB,
+           isPrimaryHub true, interface (the DVTI) and ipv4PoolsForSpokeVti [the pool]; each spoke
+           with peerType SPOKE and interface (its mpls port, Ethernet0/0).
   - id: fmc-sdwan-backup-wan
     title: Add backup tunnels over inet for spoke2 and spoke3
     mode: manual
@@ -387,8 +410,10 @@ steps:
         - Spokes: sdwan-single-spoke2 and sdwan-single-spoke3 on inet.
         - The same authentication and routing settings as sdwan-single (AS 65000, community
           1000, multipath on). FMC merges both topologies into one BGP process per device.
-      Setting backup interfaces on the spokes of a single AUTO_VPN topology doesn't work on FMC
-      10.0.1: the API accepts it and stores nothing.
+      Over REST it's the same seven calls with loopbackId 2, tunnelId 2, tunnel source inet
+      (Ethernet0/1), the 10.255.2.0/24 values, and spoke endpoints on Ethernet0/1. Setting backup
+      interfaces on the spokes of a single AUTO_VPN topology doesn't work on FMC 10.0.1: the API
+      accepts it and stores nothing.
   - id: fmc-access-rule
     title: Allow traffic between the sites
     mode: manual
@@ -415,7 +440,7 @@ checks:
       In FMC, System > Licenses > Smart Licenses shows a registered Smart Account with
       Export-Controlled Features enabled, and Help > About shows 7.6 or later. With the REST API,
       GET /api/fmc_platform/v1/license/smartlicenses returns regStatus REGISTERED and
-      exportControl true.
+      metadata.exportControl true.
   - id: hub1-registered
     type: cli_match
     description: hub1's registration with FMC has completed
@@ -578,3 +603,22 @@ tested_on:
       as IOL routers whose consoles were silent on this CML 2.10 controller (a Docker IOL
       fault), so they were replaced in place with Alpine VMs; after the swap hub1 kept the old
       host's ARP entry until h8 sent traffic. Built and checked by Claude Code.
+  - recipe_version: 1.0.0
+    cml_version: "2.10.0"
+    date: "2026-10-21"
+    result: pass
+    by: dr-stutters
+    images:
+      ftdv: ftdv-10-0-0
+      iol-xe: iol-xe-17-18-02
+      alpine: alpine-base-3-23-3
+    notes: >-
+      Clean build from the committed recipe following prompts/ftd-sdwan.md: the lab imported
+      from cookbook render output through CML's REST API, and every FMC step done with raw
+      FMC REST calls as the steps describe (domain Global/mcp-test-leaf), each previewed and
+      approved. The lab booted in 5 minutes and the FTDs listed FMC as Pending after 9; the FMC
+      steps and both deploys took about 30 minutes more. All 22 checks passed first time,
+      including every host pair 5/5. Two REST details went into the steps: the first deploy of
+      new devices needs ignoreWarning true (FMC warns about Virtual Routers), and FMC 10.0.1's
+      IKE/IPsec defaults on a new topology already match the recipe. Built and checked by
+      Claude Code.

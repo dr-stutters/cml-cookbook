@@ -135,3 +135,11 @@ If a step fails, stop and tell me what's left.
 - With two hubs, turn BGP multipath off when the DC LAN routes back through one hub: ECMP over both
   hubs makes traffic asymmetric and it gets dropped.
 - Before you pair two FTDs for HA, deploy both of them: FMC refuses to pair "dirty" peers.
+- Over REST, the first deploy of newly registered FTDs fails with "The changes to Virtual Routers
+  may cause traffic disruption" unless `ignoreWarning` is true (the web UI shows the same warning
+  with a Proceed button). Later deploys don't need it.
+- `GET deployment/deployabledevices` is enough for the deploy version; `expanded=true` returns
+  every device's full policy state, which is huge.
+- Registration over REST returns at once with a task; it takes about 5 minutes. Poll
+  `job/taskstatuses/{id}` or `show managers` on the FTD.
+- FMC rate-limits its API (about 110 requests a minute): a 429 changes nothing, so wait and retry.

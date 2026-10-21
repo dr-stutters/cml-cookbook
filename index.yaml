@@ -180,8 +180,8 @@ recipes:
   title: FTD SD-WAN with one hub
   category: security
   path: recipes/security/ftd-sdwan-single-hub
-  version: 0.1.0
-  status: draft
+  version: 1.0.0
+  status: stable
   replaced_by: null
   level: advanced
   summary: 'Secure Firewall SD-WAN with one hub and three spokes on FTDv, managed by an FMC you already
@@ -221,7 +221,7 @@ recipes:
   - mgmt_gateway
   - mgmt_dns
   last_tested:
-    recipe_version: 0.1.0
+    recipe_version: 1.0.0
     cml_version: 2.10.0
     date: '2026-10-21'
     result: pass
