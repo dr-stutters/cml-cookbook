@@ -13,6 +13,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Recipe format: optional `login` on a node (console credentials, may use an input). `cookbook render` writes it as the node's pyATS credentials.
 - `cookbook render` knows `ftdv`, `fmcv`, `external_connector` and `unmanaged_switch`.
+- `cookbook render` knows `alpine` (eth0-eth3). It's a KVM VM, so its console works on CML controllers where Docker IOL consoles stay silent.
 
 - Saved prompts in `prompts/`: `ftd-sdwan.md` (any tools) and `ftd-sdwan-mcp.md` (cml-mcp-server and fmc-mcp-server) build, check, drill or tear down the FTD SD-WAN recipes. They work as Claude Code slash commands or pasted into any agent. `prompts/README.md` explains how to use them.
 

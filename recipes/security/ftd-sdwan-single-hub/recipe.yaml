@@ -13,7 +13,7 @@ maintainers: [dr-stutters]
 
 requirements:
   cml_min_version: "2.7"
-  # ram_mb: fill in after a real run has measured it
+  ram_mb: 37888
   images:
     - node_definition: ftdv
       refplat: false
@@ -22,6 +22,8 @@ requirements:
         Tested with FTDv 10.0.0. Four FTDv nodes at 8 GB of RAM each. Your FMC must run the same
         version or a newer one.
     - node_definition: iol-xe
+      refplat: true
+    - node_definition: alpine
       refplat: true
     - node_definition: external_connector
       refplat: true
@@ -120,8 +122,8 @@ topology:
       x: -800
       y: -400
     - label: h8
-      node_definition: iol-xe
-      role: Host on hub1's inside LAN (an IOL router standing in for a PC)
+      node_definition: alpine
+      role: Host on hub1's inside LAN (Alpine Linux)
       config_file: configs/h8.cfg
       x: 0
       y: -600
@@ -180,19 +182,19 @@ topology:
       x: 400
       y: 0
     - label: h9
-      node_definition: iol-xe
+      node_definition: alpine
       role: Host on spoke2's inside LAN
       config_file: configs/h9.cfg
       x: -400
       y: 200
     - label: h10
-      node_definition: iol-xe
+      node_definition: alpine
       role: Host on spoke3's inside LAN
       config_file: configs/h10.cfg
       x: 0
       y: 200
     - label: h11
-      node_definition: iol-xe
+      node_definition: alpine
       role: Host on spoke4's inside LAN
       config_file: configs/h11.cfg
       x: 400
@@ -250,16 +252,16 @@ topology:
       b: isp7:Ethernet1/0
       description: spoke4 lte, 10.7.4.0/24
     - a: hub1:GigabitEthernet0/3
-      b: h8:Ethernet0/1
+      b: h8:eth0
       description: hub1 inside, 172.16.1.0/24 (FMC calls the FTD port Ethernet0/3)
     - a: spoke2:GigabitEthernet0/3
-      b: h9:Ethernet0/1
+      b: h9:eth0
       description: spoke2 inside, 172.16.2.0/24
     - a: spoke3:GigabitEthernet0/3
-      b: h10:Ethernet0/1
+      b: h10:eth0
       description: spoke3 inside, 172.16.3.0/24
     - a: spoke4:GigabitEthernet0/3
-      b: h11:Ethernet0/1
+      b: h11:eth0
       description: spoke4 inside, 172.16.4.0/24
 
 steps:
@@ -273,6 +275,9 @@ steps:
           Evaluation Mode) with Export-Controlled Features: Enabled. With the REST API:
           GET /api/fmc_platform/v1/license/smartlicenses returns regStatus REGISTERED and
           exportControl true.
+        - Which domain to use. FMC only registers devices in a leaf domain: if your FMC has
+          child domains (Global/<something>), pick one of them. Create everything in this recipe
+          (objects, policy, devices, topologies) in that one domain.
         - Nothing named sdwan-single-* exists yet (devices, zones, objects, policies or VPN
           topologies). Everything this recipe creates in FMC starts with that prefix, so it never
           touches anything else.
@@ -306,7 +311,8 @@ steps:
         | sdwan-single-spoke4   | {{ inputs.spoke4_mgmt_ip }}   |
 
       Registration key cookbook, no NAT ID, access control policy sdwan-single-acp, performance
-      tier FTDv5, Essentials licence. Each registration and its first deployment take about 6
+      tier FTDv5, Essentials licence, in the domain you chose (FMC refuses "Device cannot be
+      registered to non-leaf domain" if it has children). Each registration and its first deployment take about 6
       minutes. REST: POST devices/devicerecords.
     verify: [hub1-registered, spoke2-registered, spoke3-registered, spoke4-registered]
   - id: fmc-interfaces-routes
@@ -549,4 +555,25 @@ checks:
     node: h10
     target: 172.16.4.11
 
-tested_on: []
+tested_on:
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-21"
+    result: pass
+    by: dr-stutters
+    images:
+      ftdv: ftdv-10-0-0
+      iol-xe: iol-xe-17-18-02
+      alpine: alpine-base-3-23-3
+    notes: >-
+      FMC 10.0.1 (registered Smart Account, export control on), domain Global/mcp-test-leaf.
+      Followed prompts/ftd-sdwan-mcp.md with fmc-mcp-server 0.14.2 and cml-mcp-server 0.11.0;
+      every FMC and CML write was previewed and approved. The FTDs booted and listed FMC as
+      Pending about 8 minutes after the start; registration, interfaces, routes, the SD-WAN
+      call and both deploys took about 30 minutes more. All 22 checks passed: 5 IKEv2 SAs on
+      hub1, 5 iBGP sessions, ECMP over both tunnels on spoke2, and every host pair 5/5. Two
+      things changed during the run and are in this version: registering in Global failed
+      because FMC only registers in leaf domains (the step now says so), and the hosts started
+      as IOL routers whose consoles were silent on this CML 2.10 controller (a Docker IOL
+      fault), so they were replaced in place with Alpine VMs; after the swap hub1 kept the old
+      host's ARP entry until h8 sent traffic. Built and checked by Claude Code.

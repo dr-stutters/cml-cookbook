@@ -42,7 +42,7 @@ you start.
 
 | Value | Mine |
 |---|---|
-| FMC | `198.18.134.76`, domain `Global` (fmc-mcp-server is already pointed at it) |
+| FMC | `198.18.134.76`, domain `Global/mcp-test-leaf` (fmc-mcp-server is already pointed at the FMC; pass `domain=` on every call) |
 | Management network | mask `255.255.192.0`, gateway `198.18.128.1`, DNS `198.18.133.1` |
 | `single-hub` management addresses | hub1 `198.18.128.224`, spoke2 `.225`, spoke3 `.226`, spoke4 `.227` |
 | `dual-hub` management addresses | hub1 `198.18.128.228`, hub2 `.229`, spoke3 `.230`, spoke4 `.231` |
@@ -93,8 +93,16 @@ own configuration, so you never need them.
 1. Render it with the cookbook CLI:
    - `pip install "cml-cookbook @ git+https://github.com/dr-stutters/cml-cookbook"`
    - `cookbook render <recipe id> -o lab.yaml --input name=value ...`
-2. Pass the file's contents to `cml_import_lab(topology_yaml=...)`. The file contains the admin
-   password: don't print it, and delete it afterwards.
+2. Import the file. The file contains the FTD admin password, and `cml_import_lab` would carry the
+   whole file in its arguments, where most agents show it on screen.
+   - If you have a shell, import it with CML's REST API instead: `POST /api/v0/authenticate`, then
+     `POST /api/v0/import?title=<lab title>` with the file as the body. Don't print the file or the
+     request.
+   - Otherwise, ask me to import it in the CML web UI (Dashboard → Import).
+   - You can still preview it first: run `cml_import_lab` without `confirm` on a copy with the
+     password replaced.
+
+   Delete the file once it's imported. Then use `cml_list_labs` to find the new lab.
 3. `cml_plan_licences(target=<the new lab>)`. If something has to stop to make room, ask me which.
 4. `cml_start_lab(lab, wait=false)`, then `cml_wait_for_converged(lab)`. FTDv takes 15–30 minutes.
 5. Poll `cml_run_commands(nodes=[the FTDs], commands=['show managers'])` until every FTD lists the
@@ -202,6 +210,8 @@ Finish by confirming that `fmc_list_devices` and `fmc_find_object` show nothing 
 and that `fmc_get_vpn_topology('sdwan-single')` is gone.
 
 ## 9. FMC 10.0.1 quirks seen while proving these recipes
+
+- FMC only registers devices in a leaf domain ("Device cannot be registered to non-leaf domain"). If the FMC has child domains, pass the leaf domain from my lab values as `domain=` on every FMC call.
 
 - A deploy right after a registration can be refused with "another deployment in progress":
   wait a minute and retry.

@@ -235,6 +235,17 @@ def test_ftdv_fmcv_and_switch_layouts(tmp_path):
     ]
 
 
+def test_alpine_layout(tmp_path):
+    nodes = [
+        {"label": "h1", "node_definition": "alpine", "config": "hostname h1"},
+        {"label": "h2", "node_definition": "alpine"},
+    ]
+    topology = lab(render(make_recipe(tmp_path, nodes, [{"a": "h1:eth0", "b": "h2:eth1"}])))
+    by_label = {n["label"]: n for n in topology["nodes"]}
+    assert by_label["h1"]["interfaces"] == [{"id": "i0", "label": "eth0", "slot": 0, "type": "physical"}]
+    assert [(i["label"], i["slot"]) for i in by_label["h2"]["interfaces"]] == [("eth0", 0), ("eth1", 1)]
+
+
 def test_reserved_ftdv_slot_cant_be_linked(tmp_path):
     nodes = [{"label": "ftd2", "node_definition": "ftdv"}, {"label": "r1", "node_definition": "iol-xe"}]
     recipe = make_recipe(tmp_path, nodes, [{"a": "ftd2:donotuse1", "b": "r1:Ethernet0/1"}])

@@ -198,9 +198,10 @@ recipes:
   - hub-and-spoke
   nodes: 11
   license_tier: personal
-  ram_mb: null
+  ram_mb: 37888
   cml_min_version: '2.7'
   node_definitions:
+  - alpine
   - external_connector
   - ftdv
   - iol-xe
@@ -219,4 +220,8 @@ recipes:
   - mgmt_mask
   - mgmt_gateway
   - mgmt_dns
-  last_tested: null
+  last_tested:
+    recipe_version: 0.1.0
+    cml_version: 2.10.0
+    date: '2026-10-21'
+    result: pass

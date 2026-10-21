@@ -1,6 +1,6 @@
 # FTD SD-WAN with one hub
 
-> **Status: draft.** Written but not yet tested on a real CML in this form. Please [report anything that doesn't work](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
+> **Status: draft.** Passed all of its checks once on CML 2.10.0 with FMC 10.0.1 and FTDv 10.0.0 (2026-10-21), and needs a second passing run before it's marked stable. Please [report anything that doesn't work](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
 
 > **The example values come from the author's lab.** The 198.18.x.x addresses (FMC, management network, FTD management ports) and every password shown on this page are examples from the author's lab or made up for the docs. Replace them with your own. In particular, never use an example password on a real device.
 
@@ -16,8 +16,9 @@ This recipe assumes you already have:
 
 - **An FMC, 7.6 or later** (tested with 10.0.1), that the management network can reach and that has room for four more devices. The lab doesn't include one: an FMCv needs 32 GB of RAM on its own.
 - **The FMC registered to a Smart Account with Export-Controlled Features enabled.** FMC won't deploy the strong (AES) IPsec encryption the tunnels use without it, and evaluation mode doesn't count.
-- **The FTDv image in CML** (tested with 10.0.0, the same version as the FMC or older), and room for 11 licensed nodes. The four FTDv nodes take 8 GB of RAM each, about 36 GB for the whole lab.
+- **The FTDv image in CML** (tested with 10.0.0, the same version as the FMC or older), and room for 11 licensed nodes. The four FTDv nodes take 8 GB of RAM each, about 37 GB for the whole lab.
 - **A management network** the external connector (System Bridge) reaches, with four free addresses and a route to the FMC.
+- **A leaf domain, if your FMC has domains.** FMC only registers devices in a domain with no children, so if yours has `Global/<something>` domains, do everything in one of them (the author's lab uses `Global/mcp-test-leaf`).
 
 ## Topology
 
@@ -52,7 +53,7 @@ The FTDs' management ports (not drawn) share `ums`, which `ext` bridges to your 
 | isp5 | iol-xe | MPLS-like carrier | yes |
 | isp6 | iol-xe | Internet carrier | yes |
 | isp7 | iol-xe | LTE-like carrier (built and routed, no tunnel uses it) | yes |
-| h8, h9, h10, h11 | iol-xe | Hosts on the four inside LANs (IOL routers standing in for PCs) | yes |
+| h8, h9, h10, h11 | alpine | Alpine Linux hosts on the four inside LANs | yes |
 | ums | unmanaged_switch | Management segment | no |
 | ext | external_connector | Bridges management out of CML (System Bridge) | no |
 
@@ -107,7 +108,7 @@ Other credentials in the lab:
 | What | Value |
 |---|---|
 | FTD console (hub1, spoke2–4) | `admin` / your `admin_password` |
-| IOL console (isp5–7, h8–h11) | `cisco` / `cisco` (the cookbook's lab-only login) |
+| IOL carriers (isp5–7) and Alpine hosts (h8–h11) | `cisco` / `cisco` (the cookbook's lab-only login) |
 | FTD to FMC registration key | `cookbook` (only used once, inside the lab) |
 | Your FMC login | Your own FMC admin or API user, for example `cookbook-api` / `Fmc-Api#Lab-2026` (made up) |
 
@@ -140,7 +141,7 @@ Then do the steps in [`recipe.yaml`](recipe.yaml), in order. Each one names the 
 
 ## FMC objects this recipe creates
 
-Everything starts with `sdwan-single-` (the hub's tunnel interfaces start with `sdwan-dvti`), so you can find it all and clean it up.
+Everything starts with `sdwan-single-` (the hub's tunnel interfaces start with `sdwan-dvti`) and lives in one domain, so you can find it all and clean it up.
 
 | Kind | Names |
 |---|---|
@@ -166,7 +167,7 @@ Everything starts with `sdwan-single-` (the hub's tunnel interfaces start with `
 | `spoke4-bgp`, `spoke4-bgp-routes` | spoke4 peers with hub1 and learns every other site's LAN through it |
 | `ping-h9-h8` … `ping-h10-h11` | Every host reaches every other host, hub to spoke and spoke to spoke through the hub |
 
-The exact commands and expected output are in [`recipe.yaml`](recipe.yaml).
+The exact commands and expected output are in [`recipe.yaml`](recipe.yaml). Every check runs on an FTD or an Alpine host, never on the IOL carriers, so they still work on CML controllers where Docker IOL consoles stay silent.
 
 ## Clean up
 

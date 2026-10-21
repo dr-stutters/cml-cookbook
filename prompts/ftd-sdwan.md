@@ -35,7 +35,7 @@ you start.
 
 | Value | Mine |
 |---|---|
-| FMC | `198.18.134.76`, domain `Global` |
+| FMC | `198.18.134.76`, domain `Global/mcp-test-leaf` |
 | Management network | mask `255.255.192.0`, gateway `198.18.128.1`, DNS `198.18.133.1` |
 | `single-hub` management addresses | hub1 `198.18.128.224`, spoke2 `.225`, spoke3 `.226`, spoke4 `.227` |
 | `dual-hub` management addresses | hub1 `198.18.128.228`, hub2 `.229`, spoke3 `.230`, spoke4 `.231` |
@@ -118,6 +118,8 @@ deploy. At the end:
 If a step fails, stop and tell me what's left.
 
 ## 8. FMC 10.0.1 quirks seen while proving these recipes
+
+- FMC only registers devices in a leaf domain ("Device cannot be registered to non-leaf domain"). If the FMC has child domains, create every object, policy, device and topology in the one leaf domain from my lab values.
 
 - A deploy right after a registration can be refused with "another deployment in progress":
   wait a minute and retry.
