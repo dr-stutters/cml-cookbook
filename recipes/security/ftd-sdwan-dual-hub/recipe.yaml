@@ -1,8 +1,8 @@
 schema_version: 1
 id: ftd-sdwan-dual-hub
 title: FTD SD-WAN with a backup hub
-version: 0.1.0
-status: draft
+version: 1.0.0
+status: stable
 summary: >-
   Secure Firewall SD-WAN with a primary and a backup hub sharing a data center LAN, and two
   spokes, on FTDv managed by an FMC you already have: every spoke keeps an IPsec tunnel and an
@@ -569,3 +569,22 @@ tested_on:
       lost); restoring h8's route before hub1's BGP sessions returned lost every ping for about
       90 seconds, so the README now says to wait for them. A hub2 failure lost nothing, and the
       spokes dropped the hub2 session after about 2 minutes. Built and checked by Claude Code.
+  - recipe_version: 1.0.0
+    cml_version: "2.10.0"
+    date: "2026-10-21"
+    result: pass
+    by: dr-stutters
+    images:
+      ftdv: ftdv-10-0-0
+      iol-xe: iol-xe-17-18-02
+      alpine: alpine-base-3-23-3
+    notes: >-
+      Clean build from the committed recipe following prompts/ftd-sdwan.md: the lab imported
+      from cookbook render output through CML's REST API, and every FMC step done with raw FMC
+      REST calls in the order the steps give (domain Global/mcp-test-leaf), each previewed. The
+      FTDs listed FMC as Pending about 9 minutes after the start, and everything after that took
+      about 17 minutes more. All 19 checks passed first time: a new topology's IKE and IPsec
+      defaults already matched, FMC built each spoke a static VTI to each hub (10.255.1.x and
+      10.255.2.x) from the two pools, both spokes peered with both hubs and routed the DC LAN
+      through 10.255.1.1 only, and every host pair answered 5/5. Built and checked by Claude
+      Code.

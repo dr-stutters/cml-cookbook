@@ -22,6 +22,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Conventions: input examples, docs and saved prompts may use `198.18.0.0/15` (RFC 2544) when they show a real lab's values, and a README may show a clearly labelled, made-up example for a secret input.
 - AGENTS.md: when the user runs a saved prompt, follow it too; the stricter rule wins.
 - AGENTS.md: agents whose tools can import CML topology YAML import the rendered lab file instead of building node by node.
+- `prompts/ftd-sdwan-mcp.md`: in `drill` mode, change the link first and then measure, because cml-mcp-server runs one call at a time, and change Alpine host routes with `cml_configure_node` and `sudo`. Failover takes about 20 seconds over a tunnel carrying traffic and about 2 minutes over an idle one.
 
 ### Fixed
 

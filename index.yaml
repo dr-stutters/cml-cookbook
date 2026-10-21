@@ -180,8 +180,8 @@ recipes:
   title: FTD SD-WAN with a backup hub
   category: security
   path: recipes/security/ftd-sdwan-dual-hub
-  version: 0.1.0
-  status: draft
+  version: 1.0.0
+  status: stable
   replaced_by: null
   level: advanced
   summary: 'Secure Firewall SD-WAN with a primary and a backup hub sharing a data center LAN, and two
@@ -199,7 +199,7 @@ recipes:
   - redundancy
   nodes: 10
   license_tier: personal
-  ram_mb: null
+  ram_mb: 37376
   cml_min_version: '2.7'
   node_definitions:
   - alpine
@@ -221,7 +221,11 @@ recipes:
   - mgmt_mask
   - mgmt_gateway
   - mgmt_dns
-  last_tested: null
+  last_tested:
+    recipe_version: 1.0.0
+    cml_version: 2.10.0
+    date: '2026-10-21'
+    result: pass
 - id: ftd-sdwan-single-hub
   title: FTD SD-WAN with one hub
   category: security
