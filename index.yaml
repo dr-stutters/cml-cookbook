@@ -225,3 +225,49 @@ recipes:
     cml_version: 2.10.0
     date: '2026-10-21'
     result: pass
+- id: ftd-tls-cipher-policy
+  title: FTD TLS cipher policy
+  category: security
+  path: recipes/security/ftd-tls-cipher-policy
+  version: 0.1.0
+  status: draft
+  replaced_by: null
+  level: intermediate
+  summary: 'An FTDv between a TLS client and a TLS server whose ports each pin a protocol version or cipher
+    suite, managed by an FMC you already have: FTD logs the version and cipher of every TLS session to
+    an in-lab syslog collector without decrypting it, then blocks old versions and weak ciphers, and a
+    Decrypt - Resign rule shows what a terminating firewall does to the cipher on each side.'
+  tags:
+  - firewall
+  - ftd
+  - fmc
+  - tls
+  - decryption
+  - cipher-suites
+  - syslog
+  nodes: 3
+  license_tier: free
+  ram_mb: 10240
+  cml_min_version: '2.7'
+  node_definitions:
+  - alpine
+  - external_connector
+  - ftdv
+  - unmanaged_switch
+  refplat_only: false
+  external:
+  - fmc
+  - management-network
+  - internet
+  inputs:
+  - admin_password
+  - fmc_ip
+  - ftd1_mgmt_ip
+  - mgmt_mask
+  - mgmt_gateway
+  - mgmt_dns
+  last_tested:
+    recipe_version: 0.1.0
+    cml_version: 2.10.0
+    date: '2026-10-21'
+    result: pass
