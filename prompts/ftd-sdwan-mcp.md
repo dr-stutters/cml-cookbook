@@ -14,12 +14,13 @@ Build, check, drill or tear down one of the FTD SD-WAN recipes from
 https://github.com/dr-stutters/cml-cookbook in my CML, configured by my existing FMC, using two
 MCP servers:
 
-- [cml-mcp-server](https://github.com/dr-stutters/cml-mcp-server) v0.11.0-rc2 or later, for CML;
+- [cml-mcp-server](https://github.com/dr-stutters/cml-mcp-server) v0.11.0-rc3 or later, for CML;
 - [fmc-mcp-server](https://github.com/dr-stutters/fmc-mcp-server) v0.14.2 or later, for FMC.
 
 Both need `MCP_ENABLE_WRITES=true` and `MCP_ENABLE_DANGEROUS=true`: importing labs, registering
-devices, deploying and deleting are in those tiers. Call `cml_status` and `fmc_status` first, and
-stop if either server is unreachable or a tier is off.
+devices, deploying and deleting are in those tiers. cml-mcp-server also needs
+`LAB_FTD_ADMIN_PASSWORD` (section 2). Call `cml_status` and `fmc_status` first, and stop if either
+server is unreachable or a tier is off.
 
 ## 1. What to do
 
@@ -51,9 +52,13 @@ you start.
 These map onto the recipe's inputs: `fmc_ip`, `mgmt_mask`, `mgmt_gateway`, `mgmt_dns` and one
 `<node>_mgmt_ip` per FTD.
 
-**Ask me for the FTDs' `admin_password` when you need it** (example format, made up:
-`Sdwan#Lab-2026`). Never echo, log or save it. The FMC and CML logins live in the MCP servers'
-own configuration, so you never need them.
+**Never ask me for the FTDs' `admin_password`.** It lives in cml-mcp-server's configuration as
+`LAB_FTD_ADMIN_PASSWORD`: an environment variable of the server, or a line in the dotenv file its
+`CML_LAB_SECRETS_FILE` names (example format, made up: `Sdwan#Lab-2026`; strong, and no `"` or
+`\`, because it goes into the FTDs' day-0 JSON). You render the lab with the reference
+`${LAB_FTD_ADMIN_PASSWORD}`, and the server fills in the value when it imports the lab (section
+4). If you ever see the value, never echo, log or save it. The FMC and CML logins live in the MCP
+servers' own configuration too, so you never need them.
 
 ## 3. Ground rules
 
@@ -96,19 +101,24 @@ own configuration, so you never need them.
 
 **Build the lab**
 
-1. Render it with the cookbook CLI:
+1. Render it with the cookbook CLI. Give the password as a reference, never the value:
    - `pip install "cml-cookbook @ git+https://github.com/dr-stutters/cml-cookbook"`
-   - `cookbook render <recipe id> -o lab.yaml --input name=value ...`
-2. Import the file. The file contains the FTD admin password, and `cml_import_lab` would carry the
-   whole file in its arguments, where most agents show it on screen.
-   - If you have a shell, import it with CML's REST API instead: `POST /api/v0/authenticate`, then
-     `POST /api/v0/import?title=<lab title>` with the file as the body. Don't print the file or the
-     request.
-   - Otherwise, ask me to import it in the CML web UI (Dashboard → Import).
-   - You can still preview it first: run `cml_import_lab` without `confirm` on a copy with the
-     password replaced.
+   - `cookbook render <recipe id> -o lab.yaml --input admin_password='${LAB_FTD_ADMIN_PASSWORD}' --input name=value ...`
 
-   Delete the file once it's imported. Then use `cml_list_labs` to find the new lab.
+   Keep the single quotes so the shell doesn't expand it. The file then holds
+   `${LAB_FTD_ADMIN_PASSWORD}` in each FTD's day-0 `AdminPassword` and console login, and no
+   secret.
+2. Import it with `cml_import_lab(topology_yaml=<the file's contents>)`. cml-mcp-server fills in the
+   value only in what it sends to CML, so the tool call, the preview, the result and the server's
+   audit log carry the reference, never the password.
+   - The preview must list `lab_secrets` with `LAB_FTD_ADMIN_PASSWORD` for every FTD. If it has no
+     `lab_secrets`, the server is older than v0.11.0-rc3 and would import the reference itself as
+     the password: stop and tell me.
+   - If the preview is `blocked` because `LAB_FTD_ADMIN_PASSWORD` is missing, stop and ask me to set
+     it in the server's environment or in its `CML_LAB_SECRETS_FILE`.
+   - Show me the preview and confirm only after I approve it.
+
+   Then use `cml_list_labs` to find the new lab.
 3. `cml_plan_licences(target=<the new lab>)`. If something has to stop to make room, ask me which.
 4. `cml_start_lab(lab, wait=false)`, then `cml_wait_for_converged(lab)`. FTDv takes 15–30 minutes.
 5. Poll `cml_run_commands(nodes=[the FTDs], commands=['show managers'])` until every FTD lists the
