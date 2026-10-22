@@ -24,6 +24,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - AGENTS.md: agents whose tools can import CML topology YAML import the rendered lab file instead of building node by node.
 - `prompts/ftd-sdwan-mcp.md`: in `drill` mode, change the link first and then measure, because cml-mcp-server runs one call at a time, and change Alpine host routes with `cml_configure_node` and `sudo`. Failover takes about 20 seconds over a tunnel carrying traffic and about 2 minutes over an idle one.
 - `prompts/ftd-sdwan-mcp.md` imports the lab with `cml_import_lab` instead of CML's REST API. It renders the recipe with `--input admin_password='${LAB_FTD_ADMIN_PASSWORD}'`, and cml-mcp-server v0.11.0-rc3 or later fills in the value from its own environment or `CML_LAB_SECRETS_FILE`, so the agent never sees or asks for the FTD password. Before, the rendered file held the password, so the prompt imported it through the REST API to keep it out of the tool call. `prompts/README.md` now asks for cml-mcp-server v0.11.0-rc3 with `LAB_FTD_ADMIN_PASSWORD` set.
+- `prompts/ftd-sdwan-mcp.md` has the `ha-hub` calls: `fmc_create_ha_pair` with separate failover and state links, `fmc_configure_ha_monitoring` for the standby addresses, then `fmc_create_sdwan_topology` with the pair as the hub; the drills use `fmc_ha_action(action='switch')` and stopping hub1 in CML.
 
 ### Fixed
 

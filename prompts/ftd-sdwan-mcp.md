@@ -168,6 +168,29 @@ fmc_create_sdwan_topology(
   bgp_as=65000, community=1000, multipath=False)
 ```
 
+For `ha-hub`, configure interfaces and routes on hub1 and the spokes only, deploy, then form the pair
+and give it standby addresses before the SD-WAN call, which takes the pair as the hub:
+
+```
+fmc_create_ha_pair(name='sdwan-ha-hub', primary='sdwan-ha-hub1', secondary='sdwan-ha-hub2',
+  failover_interface='Ethernet0/4', logical_name='sdwan-ha-fover', active_ip='10.254.1.1',
+  standby_ip='10.254.1.2', subnet_mask='255.255.255.252', state_interface='Ethernet0/5',
+  state_logical_name='sdwan-ha-state', state_active_ip='10.254.2.1', state_standby_ip='10.254.2.2')
+fmc_configure_ha_monitoring(ha_pair='sdwan-ha-hub', interface='mpls', standby_ip='10.5.1.2')
+  (and inet 10.6.1.2, lte 10.7.1.2, inside 172.16.1.2), then fmc_deploy(devices=['sdwan-ha-hub'])
+fmc_create_sdwan_topology(
+  name='sdwan-ha', hub='sdwan-ha-hub', hub_wan_interface='mpls', hub_inside_interfaces=['inside'],
+  tunnel_zone='sdwan-ha-overlay', spoke_pool='10.255.1.0/24',
+  spokes=[
+    {'device': 'sdwan-ha-spoke3', 'wan_interface': 'mpls', 'inside_interfaces': ['inside']},
+    {'device': 'sdwan-ha-spoke4', 'wan_interface': 'mpls', 'inside_interfaces': ['inside']}],
+  bgp_as=65000, community=1000, multipath=False)
+```
+
+Deploy the pair (`sdwan-ha-hub`) and the spokes, never the units on their own. The drills use
+`fmc_ha_action(ha_pair='sdwan-ha-hub', action='switch')` and `cml_set_node_state(node='hub1',
+state='stop')`, and `fmc_get_ha_status` for both units' view.
+
 **Checks**
 
 - Run the CLI checks with `cml_run_commands` on the device consoles: `show managers`,
