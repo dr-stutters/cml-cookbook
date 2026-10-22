@@ -82,7 +82,7 @@ The same catalog, with tags, images, inputs and test history, is in [index.yaml]
 
 ## Contributing
 
-New recipes, fixes, and test runs on your own CML are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+This cookbook is maintained by [@dr-stutters](https://github.com/dr-stutters) alone and doesn't accept pull requests or recipe submissions. You can still [report a broken recipe](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml) or [ask for one](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-request.yml). See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Repository layout
 
