@@ -7,6 +7,8 @@ Recipes for building network topologies in [Cisco Modeling Labs (CML)](https://d
 
 Each recipe is a fixed topology: the nodes, the links, a day-0 config for every node, and checks that say what "working" means (OSPF neighbors FULL, BGP Established, this host can ping that one). An agent reads the recipe, builds the lab in your CML, runs the checks and tells you which passed.
 
+> **Disclaimer.** This is not an official Cisco product or repository, and it isn't supported or endorsed by Cisco. It's a personal project by [@dr-stutters](https://github.com/dr-stutters), for lab and learning use only: don't run its configs on production networks. It's provided as is, with no warranty (see the [license](LICENSE)). Cisco, Cisco Modeling Labs and the other product names here are trademarks of Cisco Systems, Inc.
+
 > **Early days.** The first four recipes are stable, each tested twice on CML 2.10.0. Each one imports straight into CML from its release. More are on the way, along with `cookbook check`. See the [roadmap](docs/design.md#roadmap).
 
 ## What's in a recipe
