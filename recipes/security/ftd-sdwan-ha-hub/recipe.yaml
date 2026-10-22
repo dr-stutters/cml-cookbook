@@ -6,15 +6,15 @@ status: draft
 summary: >-
   Secure Firewall SD-WAN whose hub is an active/standby FTDv high-availability pair, with two
   spokes, managed by an FMC you already have: the spokes keep one IPsec tunnel and one iBGP session
-  to the pair, and when the active unit fails the standby takes over its addresses and the tunnels
-  with it.
+  to the pair, and when the active unit fails the standby takes over its addresses and the spokes
+  rebuild their tunnels to it.
 level: advanced
 tags: [firewall, ftd, fmc, sdwan, ipsec, vti, bgp, hub-and-spoke, high-availability, failover]
 maintainers: [dr-stutters]
 
 requirements:
   cml_min_version: "2.7"
-  # ram_mb: fill in after a real run has measured it
+  ram_mb: 37376
   images:
     - node_definition: ftdv
       refplat: false
@@ -426,8 +426,8 @@ steps:
         - Authentication: automatic pre-shared key. IKEv2 with FMC's default AES policies.
         - Routing: BGP on, AS 65000, community 1000, redistributing the connected inside
           interfaces (the hub and every spoke: inside).
-      The tunnels end on the pair's active unit. Because the pair replicates IPsec and BGP state
-      over the state link, a failover keeps them.
+      The tunnels end on the pair's active unit. After a failover the spokes build them again to
+      the same addresses on the new active unit.
       REST, in this order (paths under /api/fmc_config/v1/domain/{domainUUID}/):
         1. POST object/ipv4addresspools (the pool above).
         2. FMC keeps an HA pair's interfaces on its primary unit, so create them on hub1: POST
@@ -596,4 +596,26 @@ checks:
     node: h9
     target: 172.16.4.10
 
-tested_on: []
+tested_on:
+  - recipe_version: 0.1.0
+    cml_version: "2.10.0"
+    date: "2026-10-22"
+    result: pass
+    by: dr-stutters
+    images:
+      ftdv: ftdv-10-0-0
+      iol-xe: iol-xe-17-18-02
+      alpine: alpine-base-3-23-3
+    notes: >-
+      FMC 10.0.1 (registered Smart Account, export control on), domain Global/mcp-test-leaf.
+      Followed prompts/ftd-sdwan-mcp.md with fmc-mcp-server 0.15.0 and cml-mcp-server 0.11.0:
+      the lab was rendered with admin_password='${LAB_FTD_ADMIN_PASSWORD}' and imported with
+      cml_import_lab, which filled the password in on the server. Every FMC and CML write was
+      previewed. fmc_register_devices registered all four FTDs in about 4 minutes,
+      fmc_create_ha_pair formed the pair, fmc_configure_ha_monitoring set the standby addresses,
+      and one fmc_create_sdwan_topology call with the pair as hub built the DVTI, pool and iBGP
+      overlay. All 17 checks passed. Both drills ran: a switch of the active unit lost about 26
+      seconds of pings going over and 14 coming back, and stopping the active unit lost about 50;
+      in both cases the spokes rebuilt their tunnels and BGP sessions on the new active unit (the
+      DVTI's sessions aren't carried over), so the README now says so. Built and checked by Claude
+      Code.

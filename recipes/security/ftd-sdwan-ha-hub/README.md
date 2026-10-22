@@ -6,7 +6,7 @@
 
 > **This lab connects to your network.** An external connector bridges the FTDs' management ports out of CML so they can reach your FMC. Use a lab network, never an untrusted one, and pick a strong `admin_password`.
 
-Secure Firewall SD-WAN where the hub is a high-availability pair. hub1 and hub2 form an active/standby FTD HA pair, and FMC's SD-WAN wizard joins the pair to the topology as a single hub. Each of the two spokes keeps one IPsec tunnel and one iBGP session to the pair. The pair shares its addresses: the active unit answers on them, and when it fails the standby takes them over, with the tunnels and the BGP session replicated over the state link.
+Secure Firewall SD-WAN where the hub is a high-availability pair. hub1 and hub2 form an active/standby FTD HA pair, and FMC's SD-WAN wizard joins the pair to the topology as a single hub. Each of the two spokes keeps one IPsec tunnel and one iBGP session to the pair. The pair shares its addresses: the active unit answers on them, and when it fails the standby takes them over. The spokes then build their tunnels and BGP sessions again to the same addresses, so a failover costs tens of seconds of traffic, not minutes, and nothing on the spokes changes.
 
 It's the third of the FTD SD-WAN recipes, after [`ftd-sdwan-single-hub`](../ftd-sdwan-single-hub/) and [`ftd-sdwan-dual-hub`](../ftd-sdwan-dual-hub/), with the same carriers, ports, addressing scheme and FMC steps. Where `ftd-sdwan-dual-hub` gives the spokes two hubs to choose from, this one makes one hub that doesn't go away.
 
@@ -199,13 +199,13 @@ Failover exercises for a finished build. The saved prompts' `drill` mode runs th
 1. **Switch the active unit.**
    - On h9, run `ping -c 120 172.16.1.8`.
    - While it runs, switch the pair in FMC (Devices > Device Management, the pair's menu, Switch Active Peer), or over REST with PUT on the pair with action SWITCH.
-   - `show failover` on hub2 now says Primary - Standby Ready on hub1 and Secondary - Active on hub2. Count the lost pings, and check that spoke3's BGP session to 10.255.1.1 stayed up (its Up/Down time doesn't reset).
+   - `show failover` on hub2 now says Secondary - Active, with hub1 Primary - Standby Ready. The dynamic VTI's tunnels and the BGP sessions on them aren't carried over: the spokes build new IKEv2 SAs to hub2 and their BGP session to 10.255.1.1 starts again (its Up/Down time resets). In the test run that cost about 26 seconds of pings going over, and 14 coming back.
    - Put it back: switch again, so hub1 is active and `ha-pair-active` passes.
 2. **Active unit failure.**
    - On h9, run `ping -c 180 172.16.1.8`.
-   - While it runs, stop hub1 in CML. hub2 notices when hub1's hellos stop on the failover link and takes over.
-   - Count the lost pings and check spoke3's BGP session.
-   - Put it back: start hub1. It boots in 15–30 minutes and rejoins as Standby Ready. Switch the pair so hub1 is active again.
+   - While it runs, stop hub1 in CML. hub2 notices when hub1's hellos stop on the failover link (the hold time is 15 seconds) and takes over, and `show failover` on hub2 says Primary - Failed.
+   - Count the lost pings. In the test run, about 50 seconds: the hold time, then the spokes rebuilding their tunnels and BGP sessions to hub2.
+   - Put it back: start hub1. It rejoins as Standby Ready once it has booted (about 8 minutes in the test run; plan for up to 30). Switch the pair so hub1 is active again. FMC 10.0.1 answered that switch over REST with an HTTP 500 "Error while fetching metadata from backend" and still switched, so check `show failover` before retrying.
 
 ## Things to try
 
