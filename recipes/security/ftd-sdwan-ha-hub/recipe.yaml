@@ -1,0 +1,599 @@
+schema_version: 1
+id: ftd-sdwan-ha-hub
+title: FTD SD-WAN with an HA hub
+version: 0.1.0
+status: draft
+summary: >-
+  Secure Firewall SD-WAN whose hub is an active/standby FTDv high-availability pair, with two
+  spokes, managed by an FMC you already have: the spokes keep one IPsec tunnel and one iBGP session
+  to the pair, and when the active unit fails the standby takes over its addresses and the tunnels
+  with it.
+level: advanced
+tags: [firewall, ftd, fmc, sdwan, ipsec, vti, bgp, hub-and-spoke, high-availability, failover]
+maintainers: [dr-stutters]
+
+requirements:
+  cml_min_version: "2.7"
+  # ram_mb: fill in after a real run has measured it
+  images:
+    - node_definition: ftdv
+      refplat: false
+      source: https://software.cisco.com/download/home (Secure Firewall Threat Defense Virtual, KVM image, added to CML as an image definition)
+      notes: >-
+        Tested with FTDv 10.0.0. Four FTDv nodes at 8 GB of RAM each. Your FMC must run the same
+        version or a newer one.
+    - node_definition: iol-xe
+      refplat: true
+    - node_definition: alpine
+      refplat: true
+    - node_definition: external_connector
+      refplat: true
+    - node_definition: unmanaged_switch
+      refplat: true
+  external:
+    - name: fmc
+      description: >-
+        An existing Secure Firewall Management Center that the management network reaches, with
+        free capacity for four devices. It must be registered to a Smart Account with
+        Export-Controlled Features enabled: FMC won't deploy the strong IPsec encryption the
+        SD-WAN tunnels use in evaluation mode. The lab doesn't include an FMC.
+      min_version: "7.6"
+    - name: management-network
+      description: >-
+        A network the external connector's bridge (System Bridge) reaches, with four free
+        addresses for the FTDs' Management0/0 ports, and a route to the FMC.
+
+inputs:
+  - name: admin_password
+    description: >-
+      Password for the admin user on the four FTDs (CLI). FTD needs a strong one: at least 8
+      characters with upper and lower case, a digit and a symbol, and no dictionary words. Avoid
+      " and \, which would break the day-0 JSON.
+    type: secret
+  - name: fmc_ip
+    description: Management address of your FMC
+    type: ipv4
+    example: 198.18.134.76
+  - name: hub1_mgmt_ip
+    description: Address for hub1's Management0/0 port on your management network (the primary unit)
+    type: ipv4
+    example: 198.18.128.232
+  - name: hub2_mgmt_ip
+    description: Address for hub2's Management0/0 port (the secondary unit)
+    type: ipv4
+    example: 198.18.128.233
+  - name: spoke3_mgmt_ip
+    description: Address for spoke3's Management0/0 port
+    type: ipv4
+    example: 198.18.128.234
+  - name: spoke4_mgmt_ip
+    description: Address for spoke4's Management0/0 port
+    type: ipv4
+    example: 198.18.128.235
+  - name: mgmt_mask
+    description: Subnet mask of the management network
+    type: ipv4
+    example: 255.255.192.0
+  - name: mgmt_gateway
+    description: Default gateway on the management network
+    type: ipv4
+    example: 198.18.128.1
+  - name: mgmt_dns
+    description: DNS server the FTDs use
+    type: ipv4
+    example: 198.18.133.1
+
+addressing:
+  - prefix: 10.5.0.0/16
+    purpose: >-
+      isp5, the MPLS-like carrier. The hub pair shares 10.5.1.0/24 through ums5 (active unit .1,
+      standby .2, isp5 .5); 10.5.N.0/24 goes to spoke N (spoke .N, isp5 .5). The FTDs' interface is
+      called mpls. Every tunnel runs over it.
+  - prefix: 10.6.0.0/16
+    purpose: isp6, the internet carrier, laid out the same way (hub pair 10.6.1.0/24 through ums6). Interface inet. Built and routed, no tunnels.
+  - prefix: 10.7.0.0/16
+    purpose: isp7, the LTE-like carrier, laid out the same way (hub pair 10.7.1.0/24 through ums7). Interface lte. Built and routed, no tunnels.
+  - prefix: 172.16.1.0/24
+    purpose: The data center LAN behind the hub pair (active unit .1, standby .2, h8 .8 with its default route to .1)
+  - prefix: 172.16.3.0/24
+    purpose: spoke3 inside LAN (spoke3 .1, h9 .9)
+  - prefix: 172.16.4.0/24
+    purpose: spoke4 inside LAN (spoke4 .1, h10 .10)
+  - prefix: 10.254.1.0/30
+    purpose: The HA failover link on GigabitEthernet0/4, a direct cable between the hubs (hub1 .1, hub2 .2)
+  - prefix: 10.254.2.0/30
+    purpose: The HA state link on GigabitEthernet0/5, a direct cable between the hubs (hub1 .1, hub2 .2)
+  - prefix: 10.255.1.0/24
+    purpose: >-
+      The overlay. The hub pair's tunnel borrows 10.255.1.1 from a loopback; FMC gives each spoke
+      tunnel an address from the pool 10.255.1.2-10.255.1.254.
+
+topology:
+  nodes:
+    - label: ext
+      node_definition: external_connector
+      role: Bridges the management switch to your network
+      config: System Bridge
+      x: -800
+      y: -600
+    - label: ums
+      node_definition: unmanaged_switch
+      role: Management segment for the four FTDs
+      x: -800
+      y: -400
+    - label: h8
+      node_definition: alpine
+      role: Host in the data center, behind the hub pair
+      config_file: configs/h8.cfg
+      x: 0
+      y: -800
+    - label: ums2
+      node_definition: unmanaged_switch
+      role: The data center LAN that both hubs and h8 share
+      x: 0
+      y: -600
+    - label: hub1
+      node_definition: ftdv
+      role: SD-WAN hub, primary unit of the HA pair (active)
+      config_file: configs/hub1.json
+      login:
+        username: admin
+        password: "{{ inputs.admin_password }}"
+      x: -200
+      y: -400
+    - label: hub2
+      node_definition: ftdv
+      role: SD-WAN hub, secondary unit of the HA pair (standby)
+      config_file: configs/hub2.json
+      login:
+        username: admin
+        password: "{{ inputs.admin_password }}"
+      x: 200
+      y: -400
+    - label: ums5
+      node_definition: unmanaged_switch
+      role: The hub pair's mpls segment on isp5
+      x: -400
+      y: -300
+    - label: ums6
+      node_definition: unmanaged_switch
+      role: The hub pair's inet segment on isp6
+      x: 0
+      y: -300
+    - label: ums7
+      node_definition: unmanaged_switch
+      role: The hub pair's lte segment on isp7
+      x: 400
+      y: -300
+    - label: isp5
+      node_definition: iol-xe
+      role: MPLS-like carrier, connects the hub pair and both spokes
+      config_file: configs/isp5.cfg
+      x: -400
+      y: -150
+    - label: isp6
+      node_definition: iol-xe
+      role: Internet carrier, connects the hub pair and both spokes
+      config_file: configs/isp6.cfg
+      x: 0
+      y: -150
+    - label: isp7
+      node_definition: iol-xe
+      role: LTE-like carrier, connects the hub pair and both spokes
+      config_file: configs/isp7.cfg
+      x: 400
+      y: -150
+    - label: spoke3
+      node_definition: ftdv
+      role: Branch with a tunnel to the hub pair over mpls
+      config_file: configs/spoke3.json
+      login:
+        username: admin
+        password: "{{ inputs.admin_password }}"
+      x: -200
+      y: 0
+    - label: spoke4
+      node_definition: ftdv
+      role: Branch with a tunnel to the hub pair over mpls
+      config_file: configs/spoke4.json
+      login:
+        username: admin
+        password: "{{ inputs.admin_password }}"
+      x: 200
+      y: 0
+    - label: h9
+      node_definition: alpine
+      role: Host on spoke3's inside LAN
+      config_file: configs/h9.cfg
+      x: -200
+      y: 200
+    - label: h10
+      node_definition: alpine
+      role: Host on spoke4's inside LAN
+      config_file: configs/h10.cfg
+      x: 200
+      y: 200
+  links:
+    - a: ext:port
+      b: ums:port0
+      description: Management network, bridged out of CML
+    - a: hub1:Management0/0
+      b: ums:port1
+      description: hub1 management, how it reaches FMC
+    - a: hub2:Management0/0
+      b: ums:port2
+      description: hub2 management
+    - a: spoke3:Management0/0
+      b: ums:port3
+      description: spoke3 management
+    - a: spoke4:Management0/0
+      b: ums:port4
+      description: spoke4 management
+    - a: isp5:Ethernet0/1
+      b: ums5:port0
+      description: isp5 on the hub pair's mpls segment, 10.5.1.0/24
+    - a: hub1:GigabitEthernet0/0
+      b: ums5:port1
+      description: hub1 mpls (FMC calls the FTD port Ethernet0/0)
+    - a: hub2:GigabitEthernet0/0
+      b: ums5:port2
+      description: hub2 mpls
+    - a: spoke3:GigabitEthernet0/0
+      b: isp5:Ethernet0/2
+      description: spoke3 mpls, 10.5.3.0/24
+    - a: spoke4:GigabitEthernet0/0
+      b: isp5:Ethernet0/3
+      description: spoke4 mpls, 10.5.4.0/24
+    - a: isp6:Ethernet0/1
+      b: ums6:port0
+      description: isp6 on the hub pair's inet segment, 10.6.1.0/24
+    - a: hub1:GigabitEthernet0/1
+      b: ums6:port1
+      description: hub1 inet (FMC calls the FTD port Ethernet0/1)
+    - a: hub2:GigabitEthernet0/1
+      b: ums6:port2
+      description: hub2 inet
+    - a: spoke3:GigabitEthernet0/1
+      b: isp6:Ethernet0/2
+      description: spoke3 inet, 10.6.3.0/24
+    - a: spoke4:GigabitEthernet0/1
+      b: isp6:Ethernet0/3
+      description: spoke4 inet, 10.6.4.0/24
+    - a: isp7:Ethernet0/1
+      b: ums7:port0
+      description: isp7 on the hub pair's lte segment, 10.7.1.0/24
+    - a: hub1:GigabitEthernet0/2
+      b: ums7:port1
+      description: hub1 lte (FMC calls the FTD port Ethernet0/2)
+    - a: hub2:GigabitEthernet0/2
+      b: ums7:port2
+      description: hub2 lte
+    - a: spoke3:GigabitEthernet0/2
+      b: isp7:Ethernet0/2
+      description: spoke3 lte, 10.7.3.0/24
+    - a: spoke4:GigabitEthernet0/2
+      b: isp7:Ethernet0/3
+      description: spoke4 lte, 10.7.4.0/24
+    - a: hub1:GigabitEthernet0/3
+      b: ums2:port0
+      description: hub1 inside, the DC LAN 172.16.1.0/24 (FMC calls the FTD port Ethernet0/3)
+    - a: hub2:GigabitEthernet0/3
+      b: ums2:port1
+      description: hub2 inside, the DC LAN
+    - a: h8:eth0
+      b: ums2:port2
+      description: h8 on the DC LAN
+    - a: hub1:GigabitEthernet0/4
+      b: hub2:GigabitEthernet0/4
+      description: HA failover link, 10.254.1.0/30 (FMC calls the port Ethernet0/4)
+    - a: hub1:GigabitEthernet0/5
+      b: hub2:GigabitEthernet0/5
+      description: HA state link, 10.254.2.0/30 (FMC calls the port Ethernet0/5)
+    - a: spoke3:GigabitEthernet0/3
+      b: h9:eth0
+      description: spoke3 inside, 172.16.3.0/24
+    - a: spoke4:GigabitEthernet0/3
+      b: h10:eth0
+      description: spoke4 inside, 172.16.4.0/24
+
+steps:
+  - id: fmc-prerequisites
+    title: Check that your FMC can build SD-WAN
+    mode: manual
+    instructions: |
+      Log in to the FMC at https://{{ inputs.fmc_ip }}. Check:
+        - Help > About shows version 7.6 or later (tested with 10.0.1).
+        - System > Licenses > Smart Licenses shows the FMC registered to a Smart Account (not
+          Evaluation Mode) with Export-Controlled Features: Enabled. With the REST API:
+          GET /api/fmc_platform/v1/license/smartlicenses returns regStatus REGISTERED and
+          metadata.exportControl true.
+        - Which domain to use: Global, unless your FMC has child domains (Global/<something>).
+          FMC only registers devices in a domain without children, so then pick one of those.
+          Create everything in this recipe (objects, policy, devices, HA pair, topology) in that
+          one domain.
+        - Nothing named sdwan-ha-* exists yet (devices, HA pairs, zones, objects, policies or VPN
+          topologies). Everything this recipe creates in FMC starts with that prefix, so it never
+          touches anything else.
+    verify: [fmc-export-controlled]
+  - id: fmc-objects
+    title: Create the zones, network objects and access control policy
+    mode: manual
+    instructions: |
+      In FMC (Objects > Object Management, and Policies > Access Control):
+        - Security zones, type Routed: sdwan-ha-wan, sdwan-ha-inside, sdwan-ha-overlay.
+        - Network objects: sdwan-ha-mpls 10.5.0.0/16, sdwan-ha-inet 10.6.0.0/16,
+          sdwan-ha-lte 10.7.0.0/16.
+        - An access control policy named sdwan-ha-acp with the default action
+          "Access Control: Block All Traffic" and no rules yet. The rule that allows the overlay
+          comes after the SD-WAN topology exists: until then the overlay zone has no interfaces and
+          FMC warns about it on every deploy.
+      REST: POST object/securityzones (interfaceMode ROUTED), object/networks and
+      policy/accesspolicies under /api/fmc_config/v1/domain/{domainUUID}/.
+  - id: fmc-register
+    title: Register the four FTDs in FMC
+    mode: manual
+    instructions: |
+      Every FTD already points at your FMC from its day-0 config (show managers lists it as
+      Pending). In FMC, Devices > Device Management > Add > Device, once per FTD:
+
+        | Display name        | Host                          |
+        |---------------------|-------------------------------|
+        | sdwan-ha-hub1       | {{ inputs.hub1_mgmt_ip }}     |
+        | sdwan-ha-hub2       | {{ inputs.hub2_mgmt_ip }}     |
+        | sdwan-ha-spoke3     | {{ inputs.spoke3_mgmt_ip }}   |
+        | sdwan-ha-spoke4     | {{ inputs.spoke4_mgmt_ip }}   |
+
+      Registration key cookbook, no NAT ID, access control policy sdwan-ha-acp, performance
+      tier FTDv5, Essentials licence, in the domain you chose. If it has child domains, FMC
+      refuses with "Device cannot be registered to non-leaf domain". Each registration and its
+      first deployment take about 6 minutes. REST: POST devices/devicerecords (name, hostName,
+      regKey, license_caps [ESSENTIALS], performanceTier FTDv5, accessPolicy). It returns at once
+      with a task id: poll job/taskstatuses/{id}, or the hubN/spokeN-registered checks.
+    verify: [hub1-registered, hub2-registered, spoke3-registered, spoke4-registered]
+  - id: fmc-interfaces-routes
+    title: Configure hub1's and the spokes' interfaces and routes
+    mode: manual
+    instructions: |
+      Configure hub1, spoke3 and spoke4 only. Leave hub2 alone: when the HA pair forms, FMC
+      replaces hub2's configuration with hub1's. FMC lists the data ports as Ethernet0/x, which
+      CML calls GigabitEthernet0/x. Enable each one with a static IPv4 address:
+
+        | Device | Ethernet0/0  | Ethernet0/1  | Ethernet0/2  | Ethernet0/3    |
+        |--------|--------------|--------------|--------------|----------------|
+        | name   | mpls         | inet         | lte          | inside         |
+        | zone   | wan          | wan          | wan          | inside         |
+        | hub1   | 10.5.1.1/24  | 10.6.1.1/24  | 10.7.1.1/24  | 172.16.1.1/24  |
+        | spoke3 | 10.5.3.3/24  | 10.6.3.3/24  | 10.7.3.3/24  | 172.16.3.1/24  |
+        | spoke4 | 10.5.4.4/24  | 10.6.4.4/24  | 10.7.4.4/24  | 172.16.4.1/24  |
+
+      The zones are sdwan-ha-wan and sdwan-ha-inside. hub1's addresses become the pair's active
+      addresses; the standby addresses come with the HA pair.
+
+      Then, under Routing > Static Route on each of the three, add three IPv4 routes. N is 1 for
+      hub1 and the spoke's number for the spokes:
+        - interface mpls, network sdwan-ha-mpls, gateway 10.5.N.5
+        - interface inet, network sdwan-ha-inet, gateway 10.6.N.6
+        - interface lte, network sdwan-ha-lte, gateway 10.7.N.7
+      REST: PUT devices/devicerecords/{id}/physicalinterfaces/{id} and
+      POST devices/devicerecords/{id}/routing/ipv4staticroutes.
+  - id: fmc-deploy-underlay
+    title: Deploy all four FTDs
+    mode: manual
+    instructions: |
+      Deploy to the four sdwan-ha-* devices, hub2 included (Deploy > Deployment), and wait until
+      it succeeds. FMC refuses to pair a device with undeployed changes, and a newly registered
+      FTD has some. If FMC refuses with "another deployment in progress", the deployment it
+      started after registration hasn't finished yet: wait a minute and try again. REST: POST
+      deployment/deploymentrequests with the version from GET deployment/deployabledevices and
+      the four device ids, then poll job/taskstatuses/{task id}. This first full deploy of new
+      devices warns "The changes to Virtual Routers may cause traffic disruption" (the web UI
+      shows it with a Proceed button), so the REST request needs ignoreWarning true.
+    verify: [hub1-interfaces, spoke3-interfaces, spoke4-interfaces, spoke3-underlay-hub]
+  - id: fmc-ha-pair
+    title: Join hub1 and hub2 as an HA pair
+    mode: manual
+    instructions: |
+      Devices > Device Management > Add > High Availability: name sdwan-ha-hub, type Firewall
+      Threat Defense, primary peer sdwan-ha-hub1, secondary peer sdwan-ha-hub2. FMC warns that
+      hub2's configuration will be replaced; continue.
+        - LAN failover link: interface Ethernet0/4, logical name sdwan-ha-fover, primary IP
+          10.254.1.1, secondary IP 10.254.1.2, mask 255.255.255.252.
+        - Stateful failover link: interface Ethernet0/5, logical name sdwan-ha-state, primary IP
+          10.254.2.1, secondary IP 10.254.2.2, mask 255.255.255.252. No IPsec encryption of the
+          failover link.
+      Forming the pair takes about 5 minutes and deploys both units. Then edit the pair, open the
+      High Availability tab, and under Monitored Interfaces give each data interface its standby
+      address: mpls 10.5.1.2, inet 10.6.1.2, lte 10.7.1.2, inside 172.16.1.2. Deploy the pair.
+      REST: POST devices/devicehapairs/ftddevicehapairs (type DeviceHAPair, primary and secondary
+      ids, ftdHABootstrap with isEncryptionEnabled false, useSameLinkForFailovers false,
+      lanFailover and statefulFailover {interfaceObject, logicalName, activeIP, standbyIP,
+      subnetMask, useIPv6Address false}); poll the task; then PUT
+      .../ftddevicehapairs/{id}/monitoredinterfaces/{id} with ipv4Configuration.standbyIPv4Address
+      for each interface, and deploy the pair (deploy its id, not the units').
+    verify: [ha-pair-active, ha-pair-standby]
+  - id: fmc-sdwan-topology
+    title: Build the SD-WAN topology with the HA pair as the hub
+    mode: manual
+    instructions: |
+      Run FMC's SD-WAN wizard (Devices > VPN > Site To Site > + SD-WAN Topology) and create a
+      topology named sdwan-ha:
+        - Hub: the HA pair sdwan-ha-hub (not the units). Create its dynamic VTI: name
+          sdwan-dvti, tunnel source mpls, security zone sdwan-ha-overlay, borrowing its address
+          from a new loopback sdwan-dvti-lo with 10.255.1.1/32. Spoke tunnel address pool: a new
+          IPv4 address pool sdwan-ha-pool, 10.255.1.2-10.255.1.254, mask 255.255.255.0.
+        - Spokes: sdwan-ha-spoke3 and sdwan-ha-spoke4, each on its WAN interface mpls, with
+          sdwan-ha-overlay as the spoke tunnel zone.
+        - Authentication: automatic pre-shared key. IKEv2 with FMC's default AES policies.
+        - Routing: BGP on, AS 65000, community 1000, redistributing the connected inside
+          interfaces (the hub and every spoke: inside).
+      The tunnels end on the pair's active unit. Because the pair replicates IPsec and BGP state
+      over the state link, a failover keeps them.
+      REST, in this order (paths under /api/fmc_config/v1/domain/{domainUUID}/):
+        1. POST object/ipv4addresspools (the pool above).
+        2. FMC keeps an HA pair's interfaces on its primary unit, so create them on hub1: POST
+           devices/devicerecords/{hub1}/loopbackinterfaces (loopbackId 1, ifname sdwan-dvti-lo,
+           enabled, ipv4 static 10.255.1.1 / 255.255.255.255), then POST
+           devices/devicerecords/{hub1}/virtualtunnelinterfaces (tunnelType DYNAMIC, tunnelId 1,
+           ifname sdwan-dvti, enabled, tunnelSource hub1's Ethernet0/0, securityZone
+           sdwan-ha-overlay, ipsecMode ipv4, ipAddressAssignmentType BORROW_IP_FROM_INTERFACE,
+           borrowIPfrom the loopback).
+        3. POST policy/ftds2svpns: name sdwan-ha, topologyType AUTO_VPN, routeBased true,
+           ikeV1Enabled false, ikeV2Enabled true, autoVpnSettings {routeSettings {enableBgp
+           true, autonomousSystemNumber 65000, communityAttribute 1000,
+           communityTagToAdvertiseLearntRoutes 1000, enableMultiPath false,
+           distributeConnectedNetwork {enableDistribution true, interfaceSelection
+           INSIDE_INTERFACE}}, spokeSvtiSecurityZone (sdwan-ha-overlay)}. Use AUTO_VPN: FMC
+           10.0.1 silently drops autoVpnSettings with HUB_AND_SPOKE.
+        4. Check .../ikesettings (automatic pre-shared key, AES-GCM-NULL-SHA-LATEST) and
+           .../ipsecsettings (AES-GCM): FMC 10.0.1's defaults; PUT them back only if not.
+        5. POST .../ftds2svpns/{id}/endpoints once per member, all with extranet false,
+           connectionType BIDIRECTIONAL and insideInterface [inside]: the hub with peerType HUB,
+           isPrimaryHub true, device {the HA pair's id, type DeviceHAPair}, its DVTI and
+           ipv4PoolsForSpokeVti [sdwan-ha-pool]; each spoke with peerType SPOKE and interface its
+           mpls port (Ethernet0/0).
+  - id: fmc-access-rule
+    title: Allow traffic between the sites
+    mode: manual
+    instructions: |
+      In sdwan-ha-acp, add a rule named sdwan-ha-allow-overlay: source zones sdwan-ha-inside and
+      sdwan-ha-overlay, destination zones sdwan-ha-inside and sdwan-ha-overlay, action Allow.
+      Everything else stays blocked by the default action.
+      REST: POST policy/accesspolicies/{id}/accessrules.
+  - id: fmc-deploy-overlay
+    title: Deploy the SD-WAN overlay
+    mode: manual
+    instructions: |
+      Deploy to the HA pair sdwan-ha-hub and the two spokes and wait until it succeeds. The
+      tunnels and BGP sessions come up within a minute or two. FMC's own tunnel status can show
+      UNKNOWN for a few minutes after a deploy even when the tunnel is up; the checks read the
+      FTDs directly.
+    verify: [hub1-ikev2-sas, spoke3-bgp, spoke4-bgp, spoke3-route-dc]
+
+checks:
+  - id: fmc-export-controlled
+    type: manual
+    description: The FMC is 7.6 or later and licensed with Export-Controlled Features
+    instructions: >-
+      In FMC, System > Licenses > Smart Licenses shows a registered Smart Account with
+      Export-Controlled Features enabled, and Help > About shows 7.6 or later. With the REST API,
+      GET /api/fmc_platform/v1/license/smartlicenses returns regStatus REGISTERED and
+      metadata.exportControl true.
+  - id: hub1-registered
+    type: cli_match
+    description: hub1's registration with FMC has completed
+    node: hub1
+    command: show managers
+    timeout: 900
+    expect:
+      pattern: 'Registration\s*:\s*Completed'
+  - id: hub2-registered
+    type: cli_match
+    description: hub2's registration with FMC has completed
+    node: hub2
+    command: show managers
+    timeout: 900
+    expect:
+      pattern: 'Registration\s*:\s*Completed'
+  - id: spoke3-registered
+    type: cli_match
+    description: spoke3's registration with FMC has completed
+    node: spoke3
+    command: show managers
+    timeout: 900
+    expect:
+      pattern: 'Registration\s*:\s*Completed'
+  - id: spoke4-registered
+    type: cli_match
+    description: spoke4's registration with FMC has completed
+    node: spoke4
+    command: show managers
+    timeout: 900
+    expect:
+      pattern: 'Registration\s*:\s*Completed'
+  - id: hub1-interfaces
+    type: cli_match
+    description: hub1's interfaces are up with the addresses FMC deployed
+    node: hub1
+    command: show interface ip brief
+    expect:
+      pattern: '\A(?=[\s\S]*Ethernet0/0\s+10\.5\.1\.1\s+YES\s+\S+\s+up\s+up)(?=[\s\S]*Ethernet0/1\s+10\.6\.1\.1\s+YES\s+\S+\s+up\s+up)(?=[\s\S]*Ethernet0/2\s+10\.7\.1\.1\s+YES\s+\S+\s+up\s+up)(?=[\s\S]*Ethernet0/3\s+172\.16\.1\.1\s+YES\s+\S+\s+up\s+up)'
+  - id: spoke3-interfaces
+    type: cli_match
+    description: spoke3's interfaces are up with the addresses FMC deployed
+    node: spoke3
+    command: show interface ip brief
+    expect:
+      pattern: '\A(?=[\s\S]*Ethernet0/0\s+10\.5\.3\.3\s+YES\s+\S+\s+up\s+up)(?=[\s\S]*Ethernet0/1\s+10\.6\.3\.3\s+YES\s+\S+\s+up\s+up)(?=[\s\S]*Ethernet0/2\s+10\.7\.3\.3\s+YES\s+\S+\s+up\s+up)(?=[\s\S]*Ethernet0/3\s+172\.16\.3\.1\s+YES\s+\S+\s+up\s+up)'
+  - id: spoke4-interfaces
+    type: cli_match
+    description: spoke4's interfaces are up with the addresses FMC deployed
+    node: spoke4
+    command: show interface ip brief
+    expect:
+      pattern: '\A(?=[\s\S]*Ethernet0/0\s+10\.5\.4\.4\s+YES\s+\S+\s+up\s+up)(?=[\s\S]*Ethernet0/1\s+10\.6\.4\.4\s+YES\s+\S+\s+up\s+up)(?=[\s\S]*Ethernet0/2\s+10\.7\.4\.4\s+YES\s+\S+\s+up\s+up)(?=[\s\S]*Ethernet0/3\s+172\.16\.4\.1\s+YES\s+\S+\s+up\s+up)'
+  - id: spoke3-underlay-hub
+    type: ping
+    description: spoke3 reaches the hub's mpls address across isp5
+    node: spoke3
+    target: 10.5.1.1
+  - id: ha-pair-active
+    type: cli_match
+    description: hub1 is the active unit and sees hub2 as Standby Ready
+    node: hub1
+    command: show failover
+    timeout: 600
+    expect:
+      pattern: '\A(?=[\s\S]*This host:\s*Primary\s*-\s*Active)(?=[\s\S]*Other host:\s*Secondary\s*-\s*Standby Ready)'
+  - id: ha-pair-standby
+    type: cli_match
+    description: hub2 is Standby Ready
+    node: hub2
+    command: show failover
+    timeout: 600
+    expect:
+      pattern: 'This host:\s*Secondary\s*-\s*Standby Ready'
+  - id: hub1-ikev2-sas
+    type: cli_match
+    description: The active hub has an IKEv2 SA up to each spoke
+    node: hub1
+    command: show crypto ikev2 sa
+    expect:
+      pattern: '\A(?=[\s\S]*10\.5\.3\.3/500\s+\S+\s+READY)(?=[\s\S]*10\.5\.4\.4/500\s+\S+\s+READY)'
+  - id: spoke3-bgp
+    type: bgp_neighbors
+    description: spoke3 peers with the hub pair
+    node: spoke3
+    expect:
+      count: 1
+      neighbors: [10.255.1.1]
+  - id: spoke4-bgp
+    type: bgp_neighbors
+    description: spoke4 peers with the hub pair
+    node: spoke4
+    expect:
+      count: 1
+      neighbors: [10.255.1.1]
+  - id: spoke3-route-dc
+    type: cli_match
+    description: spoke3 learns the DC LAN over the overlay from the hub pair
+    node: spoke3
+    command: show route 172.16.1.0
+    expect:
+      pattern: '\*\s*10\.255\.1\.1'
+  - id: ping-h9-h8
+    type: ping
+    description: spoke3's host reaches the DC host through the hub pair
+    node: h9
+    target: 172.16.1.8
+  - id: ping-h10-h8
+    type: ping
+    description: spoke4's host reaches the DC host through the hub pair
+    node: h10
+    target: 172.16.1.8
+  - id: ping-h9-h10
+    type: ping
+    description: Spoke to spoke through the hub, spoke3's host to spoke4's
+    node: h9
+    target: 172.16.4.10
+
+tested_on: []
