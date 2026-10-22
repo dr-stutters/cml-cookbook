@@ -1,8 +1,8 @@
 schema_version: 1
 id: ftd-tls-cipher-policy
 title: FTD TLS cipher policy
-version: 0.1.0
-status: draft
+version: 1.0.0
+status: stable
 summary: >-
   An FTDv between a TLS client and a TLS server whose ports each pin a protocol version or cipher
   suite, managed by an FMC you already have: FTD logs the version and cipher of every TLS session
