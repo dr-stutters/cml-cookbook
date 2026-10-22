@@ -230,14 +230,14 @@ recipes:
   title: FTD SD-WAN with an HA hub
   category: security
   path: recipes/security/ftd-sdwan-ha-hub
-  version: 0.1.0
-  status: draft
+  version: 1.0.0
+  status: stable
   replaced_by: null
   level: advanced
   summary: 'Secure Firewall SD-WAN whose hub is an active/standby FTDv high-availability pair, with two
     spokes, managed by an FMC you already have: the spokes keep one IPsec tunnel and one iBGP session
-    to the pair, and when the active unit fails the standby takes over its addresses and the tunnels with
-    it.'
+    to the pair, and when the active unit fails the standby takes over its addresses and the spokes rebuild
+    their tunnels to it.'
   tags:
   - firewall
   - ftd
@@ -251,7 +251,7 @@ recipes:
   - failover
   nodes: 10
   license_tier: personal
-  ram_mb: null
+  ram_mb: 37376
   cml_min_version: '2.7'
   node_definitions:
   - alpine
@@ -273,7 +273,11 @@ recipes:
   - mgmt_mask
   - mgmt_gateway
   - mgmt_dns
-  last_tested: null
+  last_tested:
+    recipe_version: 1.0.0
+    cml_version: 2.10.0
+    date: '2026-10-22'
+    result: pass
 - id: ftd-sdwan-single-hub
   title: FTD SD-WAN with one hub
   category: security
