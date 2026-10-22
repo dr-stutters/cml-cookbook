@@ -279,7 +279,7 @@ recipes:
   title: FTD TLS cipher policy
   category: security
   path: recipes/security/ftd-tls-cipher-policy
-  version: 1.0.0
+  version: 1.0.1
   status: stable
   replaced_by: null
   level: intermediate

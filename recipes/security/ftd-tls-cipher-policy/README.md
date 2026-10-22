@@ -21,8 +21,31 @@ h2 is the TLS client. srv3 runs six `openssl s_server` instances, each pinning o
 |---|---|
 | Does FTD log the TLS version and cipher? | Only once a decryption policy is linked to the access policy. A policy with no rules and the default action Do not decrypt is enough. Without one, the connection event has only `SSLServerName`. With one, every TLS event also carries `SSLVersion`, `SSLCipherSuite`, `SSLActualAction`, `SSLRuleName`, `SSLFlowStatus`, `SSLServerCertStatus` and `SSLCertificate`. Nothing is decrypted, and RC4 and 3DES sessions are logged as such. |
 | Can it block old versions and weak ciphers? | Yes, with Block with reset rules in the decryption policy: a Version condition (SSL 3.0, TLS 1.0, TLS 1.1) and a Cipher Suite condition. The cipher suite condition matches the suite the **server chose**, so a client that offered a strong suite first is still blocked when the server picks a weak one. Each blocked event names the rule. |
-| Can it step up a weak cipher? | Not as a feature. With Decrypt - Resign, FTD gave the client the same suite the server chose in every case this lab tried (the two legs never differed). It does remove suites it can't decrypt (RC4) from the ClientHello it forwards. When the client also offered something stronger, the server falls back to it: RC4 became ECDHE-RSA-AES128-GCM-SHA256 here. Suites FTD can decrypt (3DES, RSA-CBC) are left in and stay weak, so block them. An RC4-only client is reset by the cipher block rule or by the Unsupported Cipher Suite action (runs have logged both); with the resign rule above the block rules, only that action stops it, and at its default it lets RC4 through undecrypted. |
+| Can it step up a weak cipher? | **No, not as a feature; see [Step-up experiments](#step-up-experiments).** FTD always gives the client the suite and version the server chose. With Decrypt - Resign it removes suites it can't decrypt from the ClientHello it forwards. That upgrades a server that preferred NULL, RC4 or Camellia (it falls back to ECDHE-GCM), but it *downgrades* one that preferred ChaCha20, AES-CCM or ARIA in TLS 1.2 (it falls back to ECDHE-AES128-CBC-SHA). Suites FTD can decrypt (3DES, CBC, RSA key exchange) stay weak, so block them. An RC4-only client is reset by the cipher block rule or by the Unsupported Cipher Suite action (runs have logged both); with the resign rule above the block rules, only that action stops it, and at its default it lets RC4 through undecrypted. |
 | Does rule order matter? | Yes. A Decrypt - Resign rule above the cipher block rule lets decryptable weak suites through, decrypted. Put the block rules first. With the resign rule below them, RC4 is still stepped up. |
+
+## Step-up experiments
+
+Run on 2026-10-22 (FTDv 10.0.0, FMC 10.0.1) to prove or disprove that the firewall alone can make a TLS session stronger. srv3 ran 20 extra `s_server` instances on ports 20001-20033, each preferring one suite (or capping one version) over a stronger one the client also offered. A decryption rule on those ports was switched between Do not decrypt (baseline), Decrypt - Resign and Decrypt - Known Key, with Unsupported Cipher Suite set to Do not decrypt so every outcome was visible. The client and server columns of `tls-matrix` matched in every case: FTD never negotiated something different on each side.
+
+| Server prefers (client also offers a stronger suite) | Baseline | Decrypt - Resign | Decrypt - Known Key |
+|---|---|---|---|
+| NULL-SHA, Camellia-CBC, RC4-MD5, RC4-SHA, ECDHE-RC4 | weak suite | **ECDHE-RSA-AES128-GCM (step-up)** | weak suite, not decrypted |
+| DHE-CBC, ECDHE-CBC-SHA, RSA/ECDHE CBC-SHA256, RSA-GCM, 3DES, ECDHE-3DES | weak suite | weak suite, decrypted | weak suite (3DES: decryption error, passed) |
+| TLS 1.2 ChaCha20, AES-CCM, ARIA-GCM | strong suite | **ECDHE-RSA-AES128-CBC-SHA (step-down)** | strong suite, not decrypted |
+| TLS 1.2 DHE/ECDHE AES-GCM | strong suite | same, decrypted | same, decrypted |
+| TLS 1.3 AES-CCM | TLS_AES_128_CCM | TLS_AES_128_GCM | same, not decrypted |
+| TLS 1.3 ChaCha20 | ChaCha20 | ChaCha20, decrypted | same, not decrypted |
+| Server capped at TLS 1.0 or 1.1 (client offers up to 1.3) | TLS 1.0 / 1.1 | TLS 1.0 / 1.1 (no version step-up) | TLS 1.0 / 1.1, not decrypted |
+
+A capture on both sides of ftd1 under Decrypt - Resign shows the mechanism. The client's ClientHello offered `ECDHE-GCM, ECDHE-RC4`; the ClientHello ftd1 sent to srv3 offered only `ECDHE-GCM`. For ChaCha20, the client offered `ECDHE-CHACHA20, ECDHE-AES128-CBC-SHA` and ftd1 forwarded only `ECDHE-AES128-CBC-SHA`. 3DES was forwarded unchanged. Decrypt - Known Key doesn't modify the ClientHello at all.
+
+Other levers, none of which changes a transit session's cipher or version:
+
+- **Platform Settings > SSL** (minimum TLS 1.2 by default, plus `ssl cipher tlsv1.2 high` added for the test): with it deployed, Decrypt - Resign still gave the client TLS 1.0, 3DES and CBC suites. It applies only to sessions the FTD terminates itself (remote access VPN, management).
+- **Decryption policy advanced options:** `blockExtensions` only blocks flows that use a given TLS extension; TLS 1.3 decryption decides whether TLS 1.3 is decrypted at all.
+
+Verdict: the firewall can block weak suites and versions, but it can't step a session up. The upgrade above is a side effect of FTD dropping suites it can't decrypt, and the same side effect can weaken sessions that prefer ChaCha20, AES-CCM or ARIA. To give clients a stronger session than a legacy server supports, terminate TLS on something that negotiates each side independently, such as a reverse proxy or load balancer, and block the weak suites at the firewall.
 
 ## Topology
 
