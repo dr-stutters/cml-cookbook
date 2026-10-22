@@ -1,8 +1,8 @@
 schema_version: 1
 id: ftd-sdwan-ha-hub
 title: FTD SD-WAN with an HA hub
-version: 0.1.0
-status: draft
+version: 1.0.0
+status: stable
 summary: >-
   Secure Firewall SD-WAN whose hub is an active/standby FTDv high-availability pair, with two
   spokes, managed by an FMC you already have: the spokes keep one IPsec tunnel and one iBGP session
@@ -409,7 +409,8 @@ steps:
       lanFailover and statefulFailover {interfaceObject, logicalName, activeIP, standbyIP,
       subnetMask, useIPv6Address false}); poll the task; then PUT
       .../ftddevicehapairs/{id}/monitoredinterfaces/{id} with ipv4Configuration.standbyIPv4Address
-      for each interface, and deploy the pair (deploy its id, not the units').
+      for each interface, and deploy the pair. deployment/deployabledevices lists the pair under
+      its name with the primary unit's device id: deploy that id, and never the secondary.
     verify: [ha-pair-active, ha-pair-standby]
   - id: fmc-sdwan-topology
     title: Build the SD-WAN topology with the HA pair as the hub
@@ -619,3 +620,21 @@ tested_on:
       in both cases the spokes rebuilt their tunnels and BGP sessions on the new active unit (the
       DVTI's sessions aren't carried over), so the README now says so. Built and checked by Claude
       Code.
+  - recipe_version: 1.0.0
+    cml_version: "2.10.0"
+    date: "2026-10-22"
+    result: pass
+    by: dr-stutters
+    images:
+      ftdv: ftdv-10-0-0
+      iol-xe: iol-xe-17-18-02
+      alpine: alpine-base-3-23-3
+    notes: >-
+      Clean build from the committed recipe following prompts/ftd-sdwan.md: the lab imported
+      from cookbook render output through CML's REST API, and every FMC step done with raw FMC
+      REST calls in the order the steps give (domain Global/mcp-test-leaf), each previewed. The
+      FTDs listed FMC as Pending about 12 minutes after the start. hub2 had nothing to deploy
+      after its registration, so the underlay deploy went to hub1 and the spokes only; the HA
+      pair formed in about 4 minutes, the standby addresses went in through
+      monitoredinterfaces, and FMC listed the pair for deployment under hub1's id. All 17 checks
+      passed first time, including every host pair 5/5. Built and checked by Claude Code.

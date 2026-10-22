@@ -2,6 +2,12 @@
 
 All notable changes to this recipe. Versions follow the cookbook's [versioning rules](../../../docs/versioning.md).
 
+## [1.0.0] - 2026-10-22
+
+### Changed
+
+- First stable release. Passed all 17 checks twice on CML 2.10.0 with FMC 10.0.1 and FTDv 10.0.0: once following `prompts/ftd-sdwan-mcp.md`, once following `prompts/ftd-sdwan.md` with FMC's REST API only. The README's drills carry measured results: a switch of the active unit costs about 15-25 seconds and a failed active unit about 50, because the spokes rebuild their tunnels and BGP sessions on the new active unit (the dynamic VTI's sessions aren't carried over, as the first draft claimed). The REST hint for deploying the pair now says FMC lists it under the primary unit's id.
+
 ## [0.1.0] - 2026-10-22
 
 ### Added
