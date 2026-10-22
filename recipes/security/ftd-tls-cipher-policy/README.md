@@ -1,6 +1,6 @@
 # FTD TLS cipher policy
 
-> **Status: draft.** Every check passed on a real CML (CML 2.10, FTDv 10.0.0, FMC 10.0.1) with h2 and srv3 built fresh from this version. Expect rough edges, and please [report anything that doesn't work](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
+> **Status: stable.** All 12 checks passed twice on CML 2.10.0 with FMC 10.0.1 and FTDv 10.0.0 (2026-10-21), with h2 and srv3 built fresh from `configs/`. ftd1 and the FMC side were built once by following the steps, and the step-up findings were reproduced with the fmc-mcp-server tools. Please [report anything that doesn't work](https://github.com/dr-stutters/cml-cookbook/issues/new?template=recipe-broken.yml).
 
 > **Bridged lab.** ftd1's management port is bridged to your network through the `ext` external connector so it can reach your FMC. The `inputs` examples (`198.18.x.x`) are a real lab's values from the benchmarking range. h2 and srv3 use the lab-only `cisco`/`cisco` login and are only reachable on their consoles and through ftd1. Their second port is CML NAT, which goes out to the internet only.
 
