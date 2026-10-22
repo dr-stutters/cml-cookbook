@@ -2,6 +2,12 @@
 
 All notable changes to this recipe. Versions follow the cookbook's [versioning rules](../../../docs/versioning.md).
 
+## [1.0.1] - 2026-10-22
+
+### Changed
+
+- README: results of the step-up experiments. Decrypt - Resign upgrades sessions only when the server preferred a suite FTD can't decrypt (NULL, RC4, Camellia), and downgrades TLS 1.2 ChaCha20, AES-CCM and ARIA to ECDHE-AES128-CBC-SHA the same way. Decrypt - Known Key, Platform Settings SSL and the decryption policy's advanced options don't change a transit session's cipher or version. A two-sided capture shows FTD removing the suites from the forwarded ClientHello. Lab files are unchanged.
+
 ## [1.0.0] - 2026-10-22
 
 ### Changed
