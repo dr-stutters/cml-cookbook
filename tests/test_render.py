@@ -246,6 +246,20 @@ def test_alpine_layout(tmp_path):
     assert [(i["label"], i["slot"]) for i in by_label["h2"]["interfaces"]] == [("eth0", 0), ("eth1", 1)]
 
 
+def test_cat9000v_and_ubuntu_layouts(tmp_path):
+    nodes = [
+        {"label": "acc1", "node_definition": "cat9000v-uadp", "config": "hostname acc1"},
+        {"label": "h2", "node_definition": "ubuntu", "config": "#cloud-config"},
+    ]
+    links = [{"a": "acc1:GigabitEthernet1/0/2", "b": "h2:ens3"}]
+    topology = lab(render(make_recipe(tmp_path, nodes, links)))
+    by_label = {n["label"]: n for n in topology["nodes"]}
+    switch = [(i["label"], i.get("slot")) for i in by_label["acc1"]["interfaces"]]
+    assert switch[:4] == [("Loopback0", None), ("GigabitEthernet0/0", 0), ("GigabitEthernet1/0/1", 1), ("GigabitEthernet1/0/2", 2)]
+    assert switch[-1] == ("GigabitEthernet1/0/24", 24)
+    assert [(i["label"], i["slot"]) for i in by_label["h2"]["interfaces"]] == [("ens2", 0), ("ens3", 1)]
+
+
 def test_reserved_ftdv_slot_cant_be_linked(tmp_path):
     nodes = [{"label": "ftd2", "node_definition": "ftdv"}, {"label": "r1", "node_definition": "iol-xe"}]
     recipe = make_recipe(tmp_path, nodes, [{"a": "ftd2:donotuse1", "b": "r1:Ethernet0/1"}])

@@ -373,3 +373,63 @@ recipes:
     cml_version: 2.10.0
     date: '2026-10-21'
     result: pass
+- id: thin-client-nac-vdi
+  title: Thin client NAC with per-user VDI VPN
+  category: security
+  path: recipes/security/thin-client-nac-vdi
+  version: 0.1.0
+  status: draft
+  replaced_by: null
+  level: advanced
+  summary: 'Two layers of access control for thin clients and VDI: ISE admits each thin client on a cat9000v
+    access port (EAP-TLS, MAB fallback) to RDP only, and inside each Ubuntu xrdp desktop the user''s Secure
+    Client VPN to an FTDv gets a group policy and SGT from ISE that decide which apps they reach.'
+  tags:
+  - ise
+  - dot1x
+  - eap-tls
+  - mab
+  - trustsec
+  - sgt
+  - ftd
+  - fmc
+  - ravpn
+  - secure-client
+  - vdi
+  - thin-client
+  - cat9000v
+  nodes: 9
+  license_tier: personal
+  ram_mb: null
+  cml_min_version: '2.7'
+  node_definitions:
+  - alpine
+  - cat9000v-uadp
+  - external_connector
+  - ftdv
+  - ubuntu
+  - unmanaged_switch
+  refplat_only: false
+  external:
+  - ise
+  - fmc
+  - active-directory-and-ca
+  - secure-client-packages
+  - management-network
+  - internet
+  inputs:
+  - admin_password
+  - fmc_ip
+  - ise_ip
+  - radius_key
+  - acc1_mgmt_ip
+  - ftd2_mgmt_ip
+  - ftd2_services_ip
+  - mgmt_mask
+  - mgmt_gateway
+  - mgmt_dns
+  - ad_domain
+  - vpn_fqdn
+  - vpn_user_finance
+  - vpn_user_general
+  last_tested: null
