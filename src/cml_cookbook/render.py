@@ -47,6 +47,10 @@ _IOL = tuple(f"Ethernet{slot // 4}/{slot % 4}" for slot in range(32))
 # - FMCv 10.0: lo plus a single eth0.
 # - External connector: one port; unmanaged switch: port0-port31.
 # - Alpine 3.23 (a KVM VM, so its console works where Docker IOL consoles don't): eth0-eth3, one by default.
+# - Catalyst 9000v UADP 17.18: Loopback0, then GigabitEthernet0/0 (management) and GigabitEthernet1/0/1-1/0/24.
+#   A string configuration goes to iosxe_config.txt; conf/vswitch.xml keeps the node definition's default.
+# - Ubuntu 24.04 (cloud-init): ens2 upwards. A string configuration is the user-data; network-config keeps
+#   the node definition's default, so recipes set their addresses from user-data.
 # To support another node definition, export a lab that uses it and add it here, with a test.
 NODE_DEFINITIONS: dict[str, NodeDefinition] = {
     "iol-xe": NodeDefinition(loopback="Loopback0", physical=_IOL, default_slots=4),
@@ -58,6 +62,12 @@ NODE_DEFINITIONS: dict[str, NodeDefinition] = {
     ),
     "fmcv": NodeDefinition(loopback="lo", physical=("eth0",), default_slots=1),
     "alpine": NodeDefinition(loopback=None, physical=tuple(f"eth{n}" for n in range(4)), default_slots=1),
+    "cat9000v-uadp": NodeDefinition(
+        loopback="Loopback0",
+        physical=("GigabitEthernet0/0", *(f"GigabitEthernet1/0/{n}" for n in range(1, 25))),
+        default_slots=25,
+    ),
+    "ubuntu": NodeDefinition(loopback=None, physical=tuple(f"ens{n}" for n in range(2, 10)), default_slots=1),
     "external_connector": NodeDefinition(loopback=None, physical=("port",), default_slots=1),
     "unmanaged_switch": NodeDefinition(
         loopback=None, physical=tuple(f"port{n}" for n in range(32)), default_slots=8

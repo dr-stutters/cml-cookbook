@@ -9,6 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Added
 
 - `cookbook render <id> [--input name=value] [-o FILE]` writes a recipe as a CML topology file to import and start. It uses lab schema 0.2.2 and knows the interface layout of `iol-xe` and `ioll2-xe`. Tested by importing all four stable recipes into CML 2.10.0, where every check passed.
+- `cookbook render` knows the interface layout of `cat9000v-uadp` (Catalyst 9000v UADP 17.18) and `ubuntu` (Ubuntu 24.04 cloud-init), from a lab exported from CML 2.10.0. A string config goes to the cat9000v's `iosxe_config.txt` and to the Ubuntu node's user-data.
 - The release workflow attaches `<id>-v<version>.yaml` to every recipe release that needs no inputs, and `cookbook release-plan --json` reports which ones are `renderable`.
 
 - Recipe format: optional `login` on a node (console credentials, may use an input). `cookbook render` writes it as the node's pyATS credentials.
